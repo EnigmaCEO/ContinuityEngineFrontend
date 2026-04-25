@@ -22,6 +22,13 @@ type DecisionRecord = {
   external_audit_id: string | null;
 };
 
+type VerificationResult = {
+  decision_id: string;
+  stored_hash: string;
+  recomputed_hash: string;
+  valid: boolean;
+};
+
 type MonitorStatus = {
     stablecoin_price: number;
     oracle_staleness: number;
@@ -34,6 +41,8 @@ export default function DecisionsPage() {
   const [scenario, setScenario] = useState<ScenarioType>("stablecoin_depeg");
   const [observedValue, setObservedValue] = useState<number>(0.82);
   const [status, setStatus] = useState<MonitorStatus | null>(null);
+  const [verifications, setVerifications] = useState<Record<string, VerificationResult>>({});
+  const [verifying, setVerifying] = useState<Record<string, boolean>>({});
 
   const fetchDecisions = () => {
     fetch("http://127.0.0.1:8000/decisions")
@@ -58,6 +67,20 @@ export default function DecisionsPage() {
   
     return () => clearInterval(interval);
   }, []);
+
+  const verifyDecision = async (decisionId: string) => {
+    setVerifying((v) => ({ ...v, [decisionId]: true }));
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/audit/verify/${decisionId}`,
+        { method: "POST" }
+      );
+      const data: VerificationResult = await res.json();
+      setVerifications((v) => ({ ...v, [decisionId]: data }));
+    } finally {
+      setVerifying((v) => ({ ...v, [decisionId]: false }));
+    }
+  };
 
   const runScenario = async () => {
     await fetch("http://127.0.0.1:8000/scenarios/run", {
@@ -179,6 +202,29 @@ export default function DecisionsPage() {
           </span>
           <p>{d.explanation}</p>
           <small>{d.decision_hash}</small>
+          <div style={{ marginTop: 8 }}>
+            <button
+              onClick={() => verifyDecision(d.decision_id)}
+              disabled={verifying[d.decision_id]}
+            >
+              {verifying[d.decision_id] ? "Verifying…" : "Verify"}
+            </button>
+            {verifications[d.decision_id] && (
+              <span
+                style={{
+                  marginLeft: 8,
+                  padding: "2px 6px",
+                  fontSize: 11,
+                  fontWeight: "bold",
+                  borderRadius: 3,
+                  background: verifications[d.decision_id].valid ? "#d4edda" : "#f8d7da",
+                  color: verifications[d.decision_id].valid ? "#155724" : "#721c24",
+                }}
+              >
+                {verifications[d.decision_id].valid ? "VERIFIED" : "HASH MISMATCH"}
+              </span>
+            )}
+          </div>
         </div>
       ))}
     </div>
