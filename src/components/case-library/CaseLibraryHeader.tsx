@@ -9,6 +9,7 @@ import {
 interface Props {
   stats:     CaseLibrarySummaryStats | null;
   syncing:   boolean;
+  canManageSources: boolean;
   onSync:    () => void;
   onIngest:  () => void;
   onExport:  () => void;
@@ -23,7 +24,7 @@ function StatusDot({ color }: { color: string }) {
   );
 }
 
-export function CaseLibraryHeader({ stats, syncing, onSync, onIngest, onExport }: Props) {
+export function CaseLibraryHeader({ stats, syncing, canManageSources, onSync, onIngest, onExport }: Props) {
   const pipeColor   = stats?.pipelineHealth  ? pipelineHealthColor(stats.pipelineHealth)   : CLR.muted;
   const pipeLabel   = stats?.pipelineHealth  ? pipelineHealthLabel(stats.pipelineHealth)   : '—';
   const libColor    = stats?.libraryMaturity ? libraryMaturityColor(stats.libraryMaturity) : CLR.muted;
@@ -59,12 +60,13 @@ export function CaseLibraryHeader({ stats, syncing, onSync, onIngest, onExport }
               </span>
             </div>
             <p style={{ margin: 0, fontSize: 11.5, color: CLR.muted, lineHeight: 1.5, maxWidth: 560 }}>
-              Canonical archive of incidents, CVEs, replayable failures, and doctrine coverage intelligence.
+              Global archive of incidents, CVEs, advisories, and replayable continuity intelligence.
             </p>
           </div>
         </div>
 
         {/* Actions */}
+        {canManageSources && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <button onClick={onIngest} style={actionBtn(true)}>
             <PlusCircle size={12} /> Ingest Case
@@ -77,6 +79,7 @@ export function CaseLibraryHeader({ stats, syncing, onSync, onIngest, onExport }
             <Download size={12} /> Export
           </button>
         </div>
+        )}
       </div>
 
       {/* Status sub-row */}

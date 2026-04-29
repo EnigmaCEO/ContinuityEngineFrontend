@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Crosshair,
   BookOpen,
   Network,
   AlertTriangle,
@@ -19,28 +18,67 @@ import {
   EyeOff,
   Settings,
   ChevronDown,
+  Building2,
+  LogOut,
   type LucideIcon,
 } from "lucide-react";
 
-const navItems: { href: string; icon: LucideIcon; label: string }[] = [
-  { href: "/dashboard",                     icon: LayoutDashboard, label: "Command Overview" },
-  { href: "/dashboard/situational",         icon: Crosshair,       label: "Situational Awareness" },
-  { href: "/dashboard/doctrine",            icon: BookOpen,        label: "Doctrine Engine" },
-  { href: "/dashboard/threat-matrix",       icon: Network,         label: "Threat Matrix" },
-  { href: "/dashboard/incidents",           icon: AlertTriangle,   label: "Incidents" },
-  { href: "/dashboard/case-library",        icon: FolderOpen,      label: "Case Library" },
-  { href: "/dashboard/adapters",            icon: Cpu,             label: "Execution Adapters" },
-  { href: "/dashboard/bridge-monitor",      icon: Activity,        label: "Bridge Monitor" },
-  { href: "/dashboard/oracle-monitor",      icon: Eye,             label: "Oracle Monitor" },
-  { href: "/dashboard/audit",               icon: ShieldCheck,     label: "Verification & Audit" },
-  { href: "/dashboard/red-team",            icon: Zap,             label: "Red Team" },
-  { href: "/dashboard/blue-team",           icon: Shield,          label: "Blue Team" },
-  { href: "/dashboard/black-ops",           icon: EyeOff,          label: "Black Ops" },
-  { href: "/dashboard/settings",            icon: Settings,        label: "System Settings" },
+import { logout } from "@/lib/saas/service";
+import type { SaasMeResponse } from "@/lib/saas/types";
+
+type NavItem = { href: string; icon: LucideIcon; label: string };
+type NavSection = { heading: string; items: NavItem[]; adminOnly?: boolean };
+
+const navSections: NavSection[] = [
+  {
+    heading: "GLOBAL INTELLIGENCE",
+    items: [
+      { href: "/dashboard", icon: LayoutDashboard, label: "Command Overview" },
+      { href: "/dashboard/case-library", icon: FolderOpen, label: "Case Library" },
+      { href: "/dashboard/doctrine", icon: BookOpen, label: "Doctrine Engine" },
+      { href: "/dashboard/threat-matrix", icon: Network, label: "Threat Matrix" },
+      { href: "/dashboard/incidents", icon: AlertTriangle, label: "Incidents" },
+    ],
+  },
+  {
+    heading: "ACCOUNT OPERATIONS",
+    items: [
+      { href: "/dashboard/project-map", icon: Building2, label: "Project Map" },
+      { href: "/dashboard/adapters", icon: Cpu, label: "Execution Adapters" },
+      { href: "/dashboard/bridge-monitor", icon: Activity, label: "Bridge Monitor" },
+      { href: "/dashboard/oracle-monitor", icon: Eye, label: "Oracle Monitor" },
+      { href: "/dashboard/audit", icon: ShieldCheck, label: "Verification & Audit" },
+      { href: "/dashboard/reports", icon: LayoutDashboard, label: "Reports" },
+    ],
+  },
+  {
+    heading: "SCE OPERATIONS",
+    adminOnly: true,
+    items: [
+      { href: "/dashboard/red-team", icon: Zap, label: "Red Team" },
+      { href: "/dashboard/blue-team", icon: Shield, label: "Blue Team" },
+      { href: "/dashboard/black-ops", icon: EyeOff, label: "Black Ops" },
+      { href: "/dashboard/settings", icon: Settings, label: "System Settings" },
+      { href: "/dashboard/admin/accounts", icon: Building2, label: "Admin / Accounts" },
+    ],
+  },
 ];
 
-export function Sidebar() {
+export function Sidebar({ me }: { me: SaasMeResponse }) {
   const pathname = usePathname();
+  const visibleSections = navSections.filter((section) =>
+    section.adminOnly ? me.permissions.canViewGlobalModules : true,
+  );
+  const initials = me.user.name
+    .split(/\s+/)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("")
+    .slice(0, 2);
+
+  async function handleLogout() {
+    await logout();
+    window.location.href = "/login";
+  }
 
   return (
     <nav
@@ -52,9 +90,9 @@ export function Sidebar() {
         display: "flex",
         flexDirection: "column",
         height: "100%",
-      }}
-    >
-      {/* Logo */}
+        }}
+      >
+        {/* Logo */}
       <div
         style={{
           padding: "15px 14px",
@@ -101,54 +139,69 @@ export function Sidebar() {
 
       {/* Nav items */}
       <div style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
-        {navItems.map(({ href, icon: Icon, label }) => {
-          const isActive =
-            pathname === href ||
-            (href !== "/dashboard" && pathname.startsWith(href));
-          return (
-            <Link
-              key={href}
-              href={href}
+        {visibleSections.map((section) => (
+          <div key={section.heading} style={{ paddingTop: 8 }}>
+            <div
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "8px 14px",
-                textDecoration: "none",
-                background: isActive
-                  ? "rgba(90,65,180,0.22)"
-                  : "transparent",
-                borderLeft: isActive
-                  ? "2px solid #D4AF37"
-                  : "2px solid transparent",
-                marginBottom: 1,
-                transition: "background 0.15s",
+                padding: "0 14px 6px",
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: "0.16em",
+                color: "rgba(212,175,55,0.54)",
               }}
             >
-              <Icon
-                size={13}
-                style={{
-                  color: isActive ? "#D4AF37" : "rgba(140,140,170,0.65)",
-                  flexShrink: 0,
-                }}
-              />
-              <span
-                style={{
-                  fontSize: 11.5,
-                  color: isActive
-                    ? "#D4AF37"
-                    : "rgba(170,170,200,0.65)",
-                  fontWeight: isActive ? 600 : 400,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {label}
-              </span>
-            </Link>
-          );
-        })}
+              {section.heading}
+            </div>
+            {section.items.map(({ href, icon: Icon, label }) => {
+              const isActive =
+                pathname === href ||
+                (href !== "/dashboard" && pathname.startsWith(href));
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "8px 14px",
+                    textDecoration: "none",
+                    background: isActive
+                      ? "rgba(90,65,180,0.22)"
+                      : "transparent",
+                    borderLeft: isActive
+                      ? "2px solid #D4AF37"
+                      : "2px solid transparent",
+                    marginBottom: 1,
+                    transition: "background 0.15s",
+                  }}
+                >
+                  <Icon
+                    size={13}
+                    style={{
+                      color: isActive ? "#D4AF37" : "rgba(140,140,170,0.65)",
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 11.5,
+                      color: isActive
+                        ? "#D4AF37"
+                        : "rgba(170,170,200,0.65)",
+                      fontWeight: isActive ? 600 : 400,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {label}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </div>
 
       {/* System time */}
@@ -177,7 +230,7 @@ export function Sidebar() {
             fontFamily: "monospace",
           }}
         >
-          2025-05-26 14:37:42 UTC
+          {new Date().toISOString().replace("T", " ").slice(0, 19)} UTC
         </div>
         {/* Waveform decoration */}
         <svg viewBox="0 0 148 14" style={{ width: "100%", height: 10, marginTop: 6 }}>
@@ -217,19 +270,34 @@ export function Sidebar() {
             flexShrink: 0,
           }}
         >
-          AO
+          {initials || "SC"}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{ fontSize: 11, color: "#E2E8F0", fontWeight: 600, whiteSpace: "nowrap" }}
           >
-            Aurelius Ops
+            {me.user.name}
           </div>
           <div style={{ fontSize: 9, color: "rgba(140,140,170,0.65)" }}>
-            Administrator
+            {me.activeAccount?.name ?? me.currentRole ?? "No account"}
           </div>
         </div>
-        <ChevronDown size={11} style={{ color: "rgba(140,140,170,0.45)", flexShrink: 0 }} />
+        <button
+          onClick={handleLogout}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            background: "transparent",
+            border: "none",
+            color: "rgba(140,140,170,0.75)",
+            cursor: "pointer",
+            padding: 0,
+          }}
+        >
+          <LogOut size={11} />
+          <ChevronDown size={11} style={{ flexShrink: 0 }} />
+        </button>
       </div>
     </nav>
   );

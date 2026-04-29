@@ -73,9 +73,14 @@ export default function ThreatMatrixPage() {
             <Network size={18} style={{ color: CLR.gold }} />
           </div>
           <div>
-            <h1 style={{ margin: 0, color: CLR.text, fontSize: 22, letterSpacing: "0.04em" }}>Threat Matrix</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <h1 style={{ margin: 0, color: CLR.text, fontSize: 22, letterSpacing: "0.04em" }}>Threat Matrix</h1>
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: CLR.gold, background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.28)", borderRadius: 4, padding: "2px 7px" }}>
+                GLOBAL THREAT MODEL
+              </span>
+            </div>
             <p style={{ margin: "4px 0 0", color: "rgba(226,232,240,0.72)", fontSize: 12 }}>
-              Global threat families derived from incidents, advisories, doctrine coverage, and replay outcomes.
+              Global threat families derived from case intelligence, doctrine coverage, and replay validation.
             </p>
           </div>
         </div>
@@ -190,6 +195,7 @@ export default function ThreatMatrixPage() {
             <DetailList title="Top Cases" items={selected.topCases} empty="No related cases." mono />
             <DetailList title="Doctrine Tags" items={selected.doctrineTags} empty="No doctrine tags recorded." mono />
             <DetailList title="Recommended Actions" items={selected.recommendedActions} empty="No recommended actions recorded." />
+            <DetailList title="Continuity Implications" items={selected.continuityImplications} empty="No continuity implications recorded." />
             <DetailSection title="Replay Gap Explanation">
               <div style={{ color: CLR.text, fontSize: 12, lineHeight: 1.55 }}>{selected.replayGapExplanation}</div>
             </DetailSection>
@@ -217,11 +223,39 @@ function DetailSection({ title, children, icon }: { title: string; children: Rea
   );
 }
 
-function DetailList({ title, items, empty, mono = false }: { title: string; items: string[]; empty: string; mono?: boolean }) {
+function DetailList({
+  title,
+  items,
+  empty,
+  mono = false,
+}: {
+  title: string;
+  items?: string[];
+  empty: string;
+  mono?: boolean;
+}) {
+  const safeItems = Array.isArray(items) ? items : [];
+
   return (
     <DetailSection title={title}>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {items.length === 0 ? <span style={{ color: CLR.muted, fontSize: 11.5 }}>{empty}</span> : items.map((item) => <div key={item} style={{ color: CLR.text, fontSize: 11.5, lineHeight: 1.5, fontFamily: mono ? "monospace" : "inherit" }}>{item}</div>)}
+        {safeItems.length === 0 ? (
+          <span style={{ color: CLR.muted, fontSize: 11.5 }}>{empty}</span>
+        ) : (
+          safeItems.map((item) => (
+            <div
+              key={item}
+              style={{
+                color: CLR.text,
+                fontSize: 11.5,
+                lineHeight: 1.5,
+                fontFamily: mono ? "monospace" : "inherit",
+              }}
+            >
+              {item}
+            </div>
+          ))
+        )}
       </div>
     </DetailSection>
   );

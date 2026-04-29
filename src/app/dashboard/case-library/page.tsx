@@ -22,6 +22,7 @@ import { CaseLibraryTable }        from "@/components/case-library/CaseLibraryTa
 import { CaseLibraryMetricsPanel } from "@/components/case-library/CaseLibraryMetricsPanel";
 import { CaseLibraryActivityFeed } from "@/components/case-library/CaseLibraryActivityFeed";
 import { CasePreviewDrawer }       from "@/components/case-library/CasePreviewDrawer";
+import { useSession } from "@/components/layout/SessionContext";
 import { AlertTriangle, RefreshCw, Archive, LayoutDashboard, ChevronLeft, Play, Loader2 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -71,6 +72,9 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CaseLibraryPage() {
+  const me = useSession();
+  const canManageSources = me?.permissions.canManageSources ?? false;
+
   // ── Data state ──────────────────────────────────────────────────────────────
   const [summary,       setSummary]       = useState<CaseLibrarySummaryStats | null>(null);
   const [cases,         setCases]         = useState<CaseLibraryRecord[]>([]);
@@ -317,6 +321,7 @@ export default function CaseLibraryPage() {
       <CaseLibraryHeader
         stats={summary}
         syncing={syncing}
+        canManageSources={canManageSources}
         onSync={handleSync}
         onIngest={handleIngest}
         onExport={handleExport}
@@ -419,6 +424,8 @@ export default function CaseLibraryPage() {
 
             {/* Sort + replay + back controls */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, flexWrap: "wrap" as const }}>
+              {canManageSources && (
+                <>
               {/* Compact Batch Replay */}
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <select
@@ -460,6 +467,9 @@ export default function CaseLibraryPage() {
               </div>
 
               <div style={{ width: 1, height: 18, background: CLR.border }} />
+
+                </>
+              )}
 
               <span style={{ fontSize: 9.5, color: CLR.muted, letterSpacing: "0.07em" }}>SORT</span>
               <select

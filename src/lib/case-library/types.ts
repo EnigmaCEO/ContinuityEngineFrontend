@@ -292,6 +292,7 @@ export interface ThreatMatrixRow {
   topCases:             string[];
   doctrineTags:         string[];
   recommendedActions:   string[];
+  continuityImplications:string[];
   replayGapExplanation: string;
   relatedSources:       string[];
 }

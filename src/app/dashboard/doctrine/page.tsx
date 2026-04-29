@@ -80,9 +80,14 @@ export default function DoctrineEnginePage() {
                 <BookOpen size={18} style={{ color: CLR.gold }} />
               </div>
               <div>
-                <h1 style={{ margin: 0, color: CLR.text, fontSize: 22, letterSpacing: "0.04em" }}>Doctrine Engine</h1>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <h1 style={{ margin: 0, color: CLR.text, fontSize: 22, letterSpacing: "0.04em" }}>Doctrine Engine</h1>
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: CLR.gold, background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.28)", borderRadius: 4, padding: "2px 7px" }}>
+                    GLOBAL DOCTRINE
+                  </span>
+                </div>
                 <p style={{ margin: "4px 0 0", color: "rgba(226,232,240,0.72)", fontSize: 12 }}>
-                  Continuity doctrine learned from global incidents, CVEs, advisories, and replay outcomes.
+                  Global continuity doctrine learned from incidents, advisories, and replay outcomes.
                 </p>
               </div>
             </div>

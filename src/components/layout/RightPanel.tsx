@@ -1,4 +1,5 @@
 import { Bell, Settings } from "lucide-react";
+import type { SaasMeResponse } from "@/lib/saas/types";
 
 const alerts = [
   {
@@ -65,7 +66,13 @@ const S = {
   } as React.CSSProperties,
 };
 
-export function RightPanel() {
+export function RightPanel({ me }: { me: SaasMeResponse }) {
+  const initials = me.user.name
+    .split(/\s+/)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("")
+    .slice(0, 2);
+
   return (
     <div
       style={{
@@ -132,7 +139,7 @@ export function RightPanel() {
                 color: "#D4AF37",
               }}
             >
-              AO
+              {initials || "SC"}
             </div>
             <div
               style={{
@@ -180,6 +187,25 @@ export function RightPanel() {
           <span style={S.viewAll}>VIEW ALL</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div
+            style={{
+              background: "rgba(59,130,246,0.08)",
+              border: "1px solid rgba(59,130,246,0.22)",
+              borderRadius: 6,
+              padding: "8px 10px",
+              marginBottom: 4,
+            }}
+          >
+            <div style={{ fontSize: 8.5, letterSpacing: "0.08em", color: "#93C5FD" }}>
+              ACTIVE SESSION
+            </div>
+            <div style={{ fontSize: 10.5, color: "#E2E8F0", marginTop: 2 }}>
+              {me.user.email}
+            </div>
+            <div style={{ fontSize: 9, color: "rgba(140,140,170,0.72)", marginTop: 2 }}>
+              {me.activeAccount?.name ?? "No account"} · {me.currentRole ?? "unassigned"}
+            </div>
+          </div>
           {alerts.map((alert, i) => (
             <div
               key={i}

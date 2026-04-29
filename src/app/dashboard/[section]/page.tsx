@@ -77,6 +77,20 @@ const sections: Record<
     color: "#22C55E",
     status: "In Development",
   },
+  "project-map": {
+    title: "Project Map",
+    description: "Account-specific systems, contracts, chains, bridges, oracles, frontends, and operational dependencies.",
+    icon: FolderOpen,
+    color: "#3B82F6",
+    status: "Placeholder",
+  },
+  reports: {
+    title: "Reports",
+    description: "Account-specific reports, exports, and continuity reporting surfaces.",
+    icon: ShieldCheck,
+    color: "#D4AF37",
+    status: "Placeholder",
+  },
   audit: {
     title: "Verification & Audit",
     description: "Policy compliance verification, code integrity checks, and audit trail management.",
@@ -130,6 +144,7 @@ export default async function SectionPage(
 ) {
   const { section } = await props.params;
   const meta = sections[section];
+  const isProjectMap = section === "project-map";
 
   const Icon = meta?.icon ?? Settings;
   const color = meta?.color ?? "#D4AF37";
@@ -206,7 +221,7 @@ export default async function SectionPage(
                 padding: "2px 8px",
               }}
             >
-              IN DEVELOPMENT
+              {meta?.status?.toUpperCase() ?? "IN DEVELOPMENT"}
             </span>
           </div>
           <p
@@ -326,7 +341,7 @@ export default async function SectionPage(
               letterSpacing: "0.06em",
             }}
           >
-            Module Under Construction
+            {isProjectMap ? "Project Map" : "Module Under Construction"}
           </p>
           <p
             style={{
@@ -335,7 +350,9 @@ export default async function SectionPage(
               color: "rgba(140,140,170,0.5)",
             }}
           >
-            This section is being built out. Content will appear here.
+            {isProjectMap
+              ? "Project Map v1 will connect account assets to global SCE intelligence."
+              : "This section is being built out. Content will appear here."}
           </p>
         </div>
 
