@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --sce-bg:           #080a0e;
+  --sce-bg:           #000000;
   --sce-sidebar:      #0b0d12;
   --sce-surface:      rgba(10,12,18,0.92);
   --sce-border:       rgba(212,175,55,0.16);
@@ -39,6 +39,168 @@ body {
   color: var(--sce-text);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Incidents ticker */
+@keyframes ticker {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-track {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  animation: ticker 36s linear infinite;
+}
+
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
+/* Medium screens (iPad Pro / small laptop): fix nav wordmark wrapping */
+@media (max-width: 1280px) {
+  .nav-logo-img {
+    height: 76px !important;
+  }
+  .nav-wordmark-name {
+    font-size: 22px !important;
+    letter-spacing: 0.06em !important;
+  }
+  .nav-wordmark-sub {
+    font-size: 9px !important;
+    letter-spacing: 0.15em !important;
+    margin-top: 3px !important;
+  }
+}
+
+/* Portrait tablets (iPad Pro 1027×1366 etc): cap hero height to avoid dead space */
+@media (min-width: 901px) and (max-width: 1150px) {
+  .hero-section {
+    min-height: min(calc(100vh - 96px), 820px) !important;
+  }
+}
+
+/* Hero + nav mobile — triggers at 900px to cover tablets like 820px */
+@media (max-width: 900px) {
+  /* Switch nav to flex so wordmark stays left, portal login snaps right */
+  .nav-bar {
+    display: flex !important;
+  }
+  .nav-portal-wrapper {
+    margin-left: auto;
+  }
+
+  /* Nav: hide links */
+  .nav-links {
+    display: none !important;
+  }
+
+  /* Scale logo image down to fit mobile nav */
+  .nav-logo-img {
+    height: 100px !important;
+  }
+
+  /* Scale wordmark text down so it doesn't wrap */
+  .nav-wordmark-name {
+    font-size: 28px !important;
+    letter-spacing: 0.06em !important;
+  }
+  .nav-wordmark-sub {
+    font-size: 10px !important;
+    letter-spacing: 0.14em !important;
+    margin-top: 3px !important;
+  }
+
+  /* Hero: remove forced viewport height (overrides inline style) */
+  .hero-illustration {
+    display: none !important;
+  }
+  .hero-section {
+    min-height: 0 !important;
+    /* Subtle atmosphere replacing the illustration */
+    background:
+      radial-gradient(ellipse 80% 50% at 80% 20%, rgba(139,92,246,0.18), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 20% 80%, rgba(139,92,246,0.08), transparent 55%),
+      #080a0e !important;
+  }
+
+  /* Center and tighten the copy column */
+  .hero-copy {
+    padding: 56px 32px 48px !important;
+    justify-content: center !important;
+    align-items: flex-start !important;
+  }
+
+  /* Let copy expand full width */
+  .hero-copy > div {
+    max-width: 100% !important;
+  }
+
+  /* Eyebrow */
+  .hero-eyebrow {
+    font-size: 10px !important;
+    margin-bottom: 18px !important;
+  }
+
+  /* Scale headline */
+  .hero-h1 {
+    font-size: 46px !important;
+    letter-spacing: -0.025em !important;
+    line-height: 1.02 !important;
+    margin-bottom: 20px !important;
+  }
+
+  /* Subtext */
+  .hero-subtext {
+    max-width: 100% !important;
+    font-size: 14px !important;
+    margin-bottom: 32px !important;
+  }
+
+  /* Stack CTAs full-width */
+  .hero-ctas {
+    flex-direction: column !important;
+    gap: 10px !important;
+    margin-bottom: 24px !important;
+  }
+  .hero-cta-btn {
+    justify-content: center !important;
+    white-space: normal !important;
+    text-align: center;
+  }
+}
+
+/* Narrow mobile: hide wordmark text, show hero eyebrow instead */
+@media (max-width: 480px) {
+  .nav-wordmark-text {
+    display: none !important;
+  }
+  .hero-mobile-eyebrow {
+    display: block !important;
+  }
+
+  /* Ticker: stack label on top, full-width scroll row below */
+  .ticker-bar {
+    flex-direction: column !important;
+    height: auto !important;
+    align-items: stretch !important;
+    overflow: visible !important;
+  }
+  .ticker-label {
+    height: 28px !important;
+    padding: 0 12px !important;
+    border-right: none !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    justify-content: flex-start;
+  }
+  .ticker-scroll {
+    height: 32px;
+    overflow: hidden !important;
+  }
+  .ticker-arrow {
+    display: none !important;
+  }
 }
 
 /* Thin scrollbar styling */

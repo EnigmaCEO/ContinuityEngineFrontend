@@ -6,12 +6,15 @@ import type {
   CaseLibraryActivityItem,
   CaseLibraryMetrics,
   CaseLibraryRecord,
+  ArchiveFacetOption,
+  ArchiveFacetsResponse,
   BatchReplayResult,
+  EligibilityRefreshResult,
 } from "@/lib/case-library/types";
 import type { CaseLibraryTableSortKey, CaseSeverity  } from "@/lib/case-library/types";
 import {
   fetchSummaryStats, fetchCases, fetchActivity, fetchMetrics, triggerSync,
-  batchRunReplay,
+  batchRunReplay, refreshReplayEligibility, fetchArchiveFacets,
 } from "@/lib/case-library/service";
 import { CLR } from "@/lib/case-library/utils";
 import { CaseLibraryHeader }       from "@/components/case-library/CaseLibraryHeader";
@@ -23,7 +26,7 @@ import { CaseLibraryMetricsPanel } from "@/components/case-library/CaseLibraryMe
 import { CaseLibraryActivityFeed } from "@/components/case-library/CaseLibraryActivityFeed";
 import { CasePreviewDrawer }       from "@/components/case-library/CasePreviewDrawer";
 import { useSession } from "@/components/layout/SessionContext";
-import { AlertTriangle, RefreshCw, Archive, LayoutDashboard, ChevronLeft, Play, Loader2 } from "lucide-react";
+import { AlertTriangle, RefreshCw, Archive, LayoutDashboard, ChevronLeft, Play, Loader2, Zap } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -43,6 +46,76 @@ const EMPTY_FILTERS: FilterState = {
   chainSystem: "", replayStatus: "", doctrineStatus: "", status: "",
   ingestedFrom: "", ingestedTo: "", datePreset: "",
 };
+
+const STATIC_SEVERITIES: ArchiveFacetOption[] = [
+  { value: "critical", label: "Critical", count: 0 },
+  { value: "high", label: "High", count: 0 },
+  { value: "medium", label: "Medium", count: 0 },
+  { value: "low", label: "Low", count: 0 },
+];
+
+const STATIC_REPLAY_STATUSES: ArchiveFacetOption[] = [
+  { value: "available", label: "Available", count: 0 },
+  { value: "missing", label: "Missing", count: 0 },
+  { value: "passed", label: "Passed", count: 0 },
+  { value: "failed", label: "Failed", count: 0 },
+  { value: "pending", label: "Pending", count: 0 },
+];
+
+const STATIC_DOCTRINE_STATUSES: ArchiveFacetOption[] = [
+  { value: "linked", label: "Linked", count: 0 },
+  { value: "pending", label: "Pending", count: 0 },
+  { value: "updated", label: "Updated", count: 0 },
+  { value: "none", label: "None", count: 0 },
+];
+
+const STATIC_CASE_STATUSES: ArchiveFacetOption[] = [
+  { value: "ingested", label: "Ingested", count: 0 },
+  { value: "normalized", label: "Normalized", count: 0 },
+  { value: "classified", label: "Classified", count: 0 },
+  { value: "replay_ready", label: "Replay Ready", count: 0 },
+  { value: "doctrine_tagged", label: "Doctrine Tagged", count: 0 },
+  { value: "verified", label: "Verified", count: 0 },
+  { value: "needs_review", label: "Needs Review", count: 0 },
+  { value: "raw_ingested", label: "Raw Ingested", count: 0 },
+  { value: "failed_normalization", label: "Failed Normalization", count: 0 },
+  { value: "failed_classification", label: "Failed Classification", count: 0 },
+];
+
+function titleLabel(value: string): string {
+  return value.replaceAll("_", " ").replaceAll("-", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function sourceValue(source: string): string {
+  const known: Record<string, string> = {
+    "GitHub Advisories": "github_advisories",
+    "NVD CVE": "nvd_cve",
+    "CISA KEV": "cisa_kev",
+    "De.Fi REKT": "defi_rekt",
+  };
+  return known[source] ?? source.toLowerCase().replaceAll(".", "").replaceAll("/", "_").replaceAll("-", "_").replaceAll(" ", "_");
+}
+
+function sourceLabel(value: string): string {
+  const known: Record<string, string> = {
+    github_advisories: "GitHub Advisories",
+    nvd_cve: "NVD CVE",
+    cisa_kev: "CISA KEV",
+    defi_rekt: "De.Fi REKT",
+  };
+  return known[value] ?? titleLabel(value);
+}
+
+function fallbackOptions(values: Iterable<string>, labeler = titleLabel): ArchiveFacetOption[] {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    if (!value) continue;
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([value, count]) => ({ value, label: labeler(value), count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+}
 
 // ─── Error banner ─────────────────────────────────────────────────────────────
 
@@ -81,6 +154,7 @@ export default function CaseLibraryPage() {
   const [caseTotal,     setCaseTotal]     = useState(0);
   const [activity,      setActivity]      = useState<CaseLibraryActivityItem[]>([]);
   const [metrics,       setMetrics]       = useState<CaseLibraryMetrics | null>(null);
+  const [facets,        setFacets]        = useState<ArchiveFacetsResponse | null>(null);
   const [selectedCase,  setSelectedCase]  = useState<CaseLibraryRecord | null>(null);
 
   // ── Loading / error state ───────────────────────────────────────────────────
@@ -88,6 +162,7 @@ export default function CaseLibraryPage() {
   const [tableLoading,    setTableLoading]    = useState(true);
   const [activityLoading, setActivityLoading] = useState(true);
   const [metricsLoading,  setMetricsLoading]  = useState(true);
+  const [facetsLoading,   setFacetsLoading]   = useState(true);
   const [error,           setError]           = useState<string | null>(null);
   const [syncing,         setSyncing]         = useState(false);
 
@@ -95,6 +170,11 @@ export default function CaseLibraryPage() {
   const [batchReplaying,    setBatchReplaying]    = useState(false);
   const [batchReplayResult, setBatchReplayResult] = useState<BatchReplayResult | null>(null);
   const [batchLimit,        setBatchLimit]        = useState<25 | 50 | 100>(50);
+
+  // ── Eligibility refresh state ────────────────────────────────────────────────
+  const [eligRefreshing,  setEligRefreshing]  = useState(false);
+  const [eligResult,      setEligResult]      = useState<EligibilityRefreshResult | null>(null);
+  const [eligError,       setEligError]       = useState<string | null>(null);
 
   // Ref tracking selected case so loadCases can refresh it without a stale closure
   const selectedCaseRef = useRef<CaseLibraryRecord | null>(null);
@@ -108,12 +188,9 @@ export default function CaseLibraryPage() {
   // ── Live filter option accumulator ──────────────────────────────────────────
   // Collects unique type/source/chain values seen across page loads without
   // requiring a separate API endpoint.
-  const seenTypes   = useRef(new Set<string>());
-  const seenSources = useRef(new Set<string>());
-  const seenChains  = useRef(new Set<string>());
-  const [liveTypes,   setLiveTypes]   = useState<string[]>([]);
-  const [liveSources, setLiveSources] = useState<string[]>([]);
-  const [liveChains,  setLiveChains]  = useState<string[]>([]);
+  const [fallbackTypes,   setFallbackTypes]   = useState<ArchiveFacetOption[]>([]);
+  const [fallbackSources, setFallbackSources] = useState<ArchiveFacetOption[]>([]);
+  const [fallbackChains,  setFallbackChains]  = useState<ArchiveFacetOption[]>([]);
 
   // ── Load summary + activity + metrics once on mount ────────────────────────
   const loadMeta = useCallback(async () => {
@@ -121,22 +198,33 @@ export default function CaseLibraryPage() {
     setSummaryLoading(true);
     setActivityLoading(true);
     setMetricsLoading(true);
-    try {
-      const [s, a, m] = await Promise.all([
-        fetchSummaryStats(),
-        fetchActivity(),
-        fetchMetrics(),
-      ]);
-      setSummary(s);
-      setActivity(a);
-      setMetrics(m);
-    } catch (e) {
-      setError((e as Error).message ?? "Failed to load case library data.");
-    } finally {
-      setSummaryLoading(false);
-      setActivityLoading(false);
-      setMetricsLoading(false);
+    setFacetsLoading(true);
+    const [s, a, m, f] = await Promise.allSettled([
+      fetchSummaryStats(),
+      fetchActivity(),
+      fetchMetrics(),
+      fetchArchiveFacets(),
+    ]);
+
+    if (s.status === "fulfilled") setSummary(s.value);
+    else setError(s.reason?.message ?? "Failed to load summary data.");
+
+    if (a.status === "fulfilled") setActivity(a.value);
+    else setError(a.reason?.message ?? "Failed to load activity data.");
+
+    if (m.status === "fulfilled") setMetrics(m.value);
+    else setError(m.reason?.message ?? "Failed to load metrics data.");
+
+    if (f.status === "fulfilled") {
+      setFacets(f.value);
+    } else {
+      console.error("[Case Library] Archive facets fetch failed; current page options will be used as fallback.", f.reason);
     }
+
+    setSummaryLoading(false);
+    setActivityLoading(false);
+    setMetricsLoading(false);
+    setFacetsLoading(false);
   }, []);
 
   useEffect(() => { selectedCaseRef.current = selectedCase; }, [selectedCase]);
@@ -193,6 +281,21 @@ export default function CaseLibraryPage() {
       setError((e as Error).message ?? "Batch replay failed.");
     } finally {
       setBatchReplaying(false);
+    }
+  }
+
+  async function handleRefreshEligibility() {
+    setEligRefreshing(true);
+    setEligResult(null);
+    setEligError(null);
+    try {
+      const result = await refreshReplayEligibility();
+      setEligResult(result);
+      await Promise.all([loadMeta(), loadCases()]);
+    } catch (e) {
+      setEligError((e as Error).message ?? "Eligibility refresh failed.");
+    } finally {
+      setEligRefreshing(false);
     }
   }
 
@@ -256,36 +359,14 @@ export default function CaseLibraryPage() {
         if (updated) setSelectedCase(updated);
       }
   
-      let typesChanged = false;
-      let sourcesChanged = false;
-      let chainsChanged = false;
-  
+      setFallbackTypes(fallbackOptions(res.items.map((c) => c.type)));
+      setFallbackChains(fallbackOptions(res.items.map((c) => c.chainSystem)));
+      const pageSources: string[] = [];
       for (const c of res.items) {
-        if (c.type && !seenTypes.current.has(c.type)) {
-          seenTypes.current.add(c.type);
-          typesChanged = true;
-        }
-  
-        if (c.chainSystem && !seenChains.current.has(c.chainSystem)) {
-          seenChains.current.add(c.chainSystem);
-          chainsChanged = true;
-        }
-  
-        const allSources = c.sources && c.sources.length > 0
-          ? Array.from(new Set([c.source, ...c.sources]))
-          : [c.source];
-  
-        for (const s of allSources) {
-          if (s && !seenSources.current.has(s)) {
-            seenSources.current.add(s);
-            sourcesChanged = true;
-          }
-        }
+        const allSources = new Set([c.source, ...(c.sources ?? []), ...(c.sourceRefs ?? []).map((ref) => ref.source)]);
+        for (const s of allSources) pageSources.push(sourceValue(s));
       }
-  
-      if (typesChanged) setLiveTypes([...seenTypes.current].sort());
-      if (sourcesChanged) setLiveSources([...seenSources.current].sort());
-      if (chainsChanged) setLiveChains([...seenChains.current].sort());
+      setFallbackSources(fallbackOptions(pageSources, sourceLabel));
     } catch (e) {
       setError((e as Error).message ?? "Failed to load cases.");
     } finally {
@@ -308,6 +389,14 @@ export default function CaseLibraryPage() {
   ]);
   
   useEffect(() => { loadCases(); }, [loadCases]);
+
+  const archiveTypes = facets?.types.length ? facets.types : fallbackTypes;
+  const archiveSources = facets?.sources.length ? facets.sources : fallbackSources;
+  const archiveChains = facets?.chains.length ? facets.chains : fallbackChains;
+  const archiveSeverities = facets?.severities.length ? facets.severities : STATIC_SEVERITIES;
+  const archiveReplayStatuses = facets?.replayStatuses.length ? facets.replayStatuses : STATIC_REPLAY_STATUSES;
+  const archiveDoctrineStatuses = facets?.doctrineStatuses.length ? facets.doctrineStatuses : STATIC_DOCTRINE_STATUSES;
+  const archiveCaseStatuses = facets?.caseStatuses.length ? facets.caseStatuses : STATIC_CASE_STATUSES;
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -426,6 +515,38 @@ export default function CaseLibraryPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, flexWrap: "wrap" as const }}>
               {canManageSources && (
                 <>
+              {/* Refresh Replay Eligibility */}
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <button
+                  onClick={handleRefreshEligibility}
+                  disabled={eligRefreshing || batchReplaying}
+                  title="Re-run doctrine enrichment on linked cases with replay_eligibility=false"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 5,
+                    background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.3)",
+                    borderRadius: 5, padding: "4px 10px",
+                    cursor: eligRefreshing || batchReplaying ? "not-allowed" : "pointer",
+                    fontSize: 10, color: "#8B5CF6", height: 27, fontWeight: 600,
+                    opacity: eligRefreshing ? 0.7 : 1,
+                  }}
+                >
+                  {eligRefreshing
+                    ? <Loader2 size={10} style={{ animation: "spin 1s linear infinite" }} />
+                    : <Zap size={10} />}
+                  {eligRefreshing ? "Refreshing…" : "Refresh Eligibility"}
+                </button>
+                {eligResult && !eligRefreshing && (
+                  <span style={{ fontSize: 9.5, color: "#8B5CF6" }}>
+                    ✓ {eligResult.updated} updated
+                  </span>
+                )}
+                {eligError && !eligRefreshing && (
+                  <span style={{ fontSize: 9.5, color: CLR.red }}>{eligError}</span>
+                )}
+              </div>
+
+              <div style={{ width: 1, height: 18, background: CLR.border }} />
+
               {/* Compact Batch Replay */}
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <select
@@ -520,9 +641,14 @@ export default function CaseLibraryPage() {
               filters={filters}
               onChange={handleFilterChange}
               onReset={handleFilterReset}
-              uniqueTypes={liveTypes}
-              uniqueSources={liveSources}
-              uniqueChains={liveChains}
+              uniqueTypes={archiveTypes}
+              uniqueSources={archiveSources}
+              uniqueChains={archiveChains}
+              severities={archiveSeverities}
+              replayStatuses={archiveReplayStatuses}
+              doctrineStatuses={archiveDoctrineStatuses}
+              caseStatuses={archiveCaseStatuses}
+              facetsLoading={facetsLoading}
             />
           </div>
 

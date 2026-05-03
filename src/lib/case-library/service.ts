@@ -5,10 +5,14 @@ import type {
   CaseLibraryTableParams,
   CaseLibraryTableResponse,
   CaseLibraryRecord,
+  ArchiveFacetsResponse,
   SourceSyncResult,
   BatchEnrichmentResult,
   BatchReplayResult,
+  EligibilityRefreshResult,
   DoctrineOverviewResponse,
+  DashboardOverviewResponse,
+  IncidentsOverviewResponse,
   ThreatMatrixOverviewResponse,
 } from './types';
 import { MOCK_CASES, MOCK_SUMMARY_STATS, MOCK_ACTIVITY, MOCK_METRICS } from './mock';
@@ -20,6 +24,20 @@ const API_BASE = 'http://127.0.0.1:8000';
 
 // Set to true to use local mock data instead of the real backend.
 const USE_MOCK = false;
+let dashboardFetchCount = 0;
+
+async function fetchJsonWithDashboardLog<T>(url: string, init?: RequestInit): Promise<T> {
+  const started = performance.now();
+  const response = await fetch(url, init);
+  const text = await response.text();
+  const elapsed = Math.round(performance.now() - started);
+  dashboardFetchCount += 1;
+  console.info(
+    `[dashboard:data] fetch=${dashboardFetchCount} url=${url} status=${response.status} bytes=${text.length} ms=${elapsed}`,
+  );
+  if (!response.ok) throw new Error(`dashboard fetch failed: ${response.status}`);
+  return JSON.parse(text) as T;
+}
 
 // ─── Summary ──────────────────────────────────────────────────────────────────
 
@@ -64,6 +82,23 @@ export async function fetchCases(params: CaseLibraryTableParams): Promise<CaseLi
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`cases fetch failed: ${res.status}`);
   return res.json() as Promise<CaseLibraryTableResponse>;
+}
+
+export async function fetchCase(caseId: string): Promise<CaseLibraryRecord> {
+  const res = await fetch(`${API_BASE}/case-library/${encodeURIComponent(caseId)}`);
+  if (!res.ok) throw new Error(`case fetch failed: ${res.status}`);
+  return res.json() as Promise<CaseLibraryRecord>;
+}
+
+export async function fetchArchiveFacets(): Promise<ArchiveFacetsResponse> {
+  if (USE_MOCK) {
+    await tick();
+    return facetsFromCases(MOCK_CASES);
+  }
+
+  const res = await fetch(`${API_BASE}/case-library/archive/facets`);
+  if (!res.ok) throw new Error(`archive facets fetch failed: ${res.status}`);
+  return res.json() as Promise<ArchiveFacetsResponse>;
 }
 
 // ─── Activity ─────────────────────────────────────────────────────────────────
@@ -167,6 +202,14 @@ export async function batchRunReplay(limit = 50): Promise<BatchReplayResult> {
   return res.json() as Promise<BatchReplayResult>;
 }
 
+export async function refreshReplayEligibility(): Promise<EligibilityRefreshResult> {
+  const res = await fetch(`${API_BASE}/case-library/replay/refresh-eligibility`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error(`refresh-eligibility failed: ${res.status}`);
+  return res.json() as Promise<EligibilityRefreshResult>;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function delay(ms: number): Promise<void> {
@@ -176,6 +219,55 @@ function delay(ms: number): Promise<void> {
 // Minimal simulated latency so loading states are visible in mock mode.
 function tick(): Promise<void> {
   return delay(120);
+}
+
+function sourceValue(source: string): string {
+  const known: Record<string, string> = {
+    'GitHub Advisories': 'github_advisories',
+    'NVD CVE': 'nvd_cve',
+    'CISA KEV': 'cisa_kev',
+    'De.Fi REKT': 'defi_rekt',
+  };
+  return known[source] ?? source.toLowerCase().replaceAll('.', '').replaceAll('/', '_').replaceAll('-', '_').replaceAll(' ', '_');
+}
+
+function labelFor(value: string): string {
+  const known: Record<string, string> = {
+    github_advisories: 'GitHub Advisories',
+    nvd_cve: 'NVD CVE',
+    cisa_kev: 'CISA KEV',
+    defi_rekt: 'De.Fi REKT',
+  };
+  return known[value] ?? value.replaceAll('_', ' ').replaceAll('-', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function optionsFrom(values: Iterable<string>, source = false) {
+  const counts = new Map<string, number>();
+  for (const raw of values) {
+    if (!raw) continue;
+    const value = source ? sourceValue(raw) : raw;
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([value, count]) => ({ value, label: labelFor(value), count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+}
+
+function facetsFromCases(cases: CaseLibraryRecord[]): ArchiveFacetsResponse {
+  const sourceValues: string[] = [];
+  for (const c of cases) {
+    const sources = new Set([c.source, ...(c.sources ?? []), ...(c.sourceRefs ?? []).map((ref) => ref.source)]);
+    sourceValues.push(...sources);
+  }
+  return {
+    sources:          optionsFrom(sourceValues, true),
+    severities:       optionsFrom(cases.map((c) => c.severity)),
+    types:            optionsFrom(cases.map((c) => c.type)),
+    chains:           optionsFrom(cases.map((c) => c.chainSystem)),
+    replayStatuses:   optionsFrom(cases.map((c) => c.replayStatus)),
+    doctrineStatuses: optionsFrom(cases.map((c) => c.doctrineStatus)),
+    caseStatuses:     optionsFrom(cases.map((c) => c.status)),
+  };
 }
 
 export async function fetchDoctrineOverview(): Promise<DoctrineOverviewResponse> {
@@ -209,4 +301,17 @@ export async function fetchThreatMatrixOverview(): Promise<ThreatMatrixOverviewR
   const res = await fetch(`${API_BASE}/case-library/threat-matrix/overview`);
   if (!res.ok) throw new Error(`threat matrix overview fetch failed: ${res.status}`);
   return res.json() as Promise<ThreatMatrixOverviewResponse>;
+}
+
+export async function fetchDashboardOverview(
+  criticalWindow: '24h' | '7d' | '30d' = '7d',
+  signal?: AbortSignal,
+): Promise<DashboardOverviewResponse> {
+  const url = new URL(`${API_BASE}/case-library/dashboard/overview`);
+  url.searchParams.set('criticalWindow', criticalWindow);
+  return fetchJsonWithDashboardLog<DashboardOverviewResponse>(url.toString(), { signal });
+}
+
+export async function fetchIncidentsOverview(signal?: AbortSignal): Promise<IncidentsOverviewResponse> {
+  return fetchJsonWithDashboardLog<IncidentsOverviewResponse>(`${API_BASE}/incidents/overview`, { signal });
 }

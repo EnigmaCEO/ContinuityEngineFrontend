@@ -102,6 +102,12 @@ export interface BatchReplayResult {
   failed:   number;
 }
 
+export interface EligibilityRefreshResult {
+  updated: number;
+  skipped: number;
+  failed:  number;
+}
+
 // ─── Summary stats ────────────────────────────────────────────────────────────
 
 export interface CaseLibrarySummaryStats {
@@ -240,6 +246,22 @@ export interface CaseLibraryTableResponse {
   total:    number;
 }
 
+export interface ArchiveFacetOption {
+  value: string;
+  label: string;
+  count: number;
+}
+
+export interface ArchiveFacetsResponse {
+  sources:          ArchiveFacetOption[];
+  severities:       ArchiveFacetOption[];
+  types:            ArchiveFacetOption[];
+  chains:           ArchiveFacetOption[];
+  replayStatuses:   ArchiveFacetOption[];
+  doctrineStatuses: ArchiveFacetOption[];
+  caseStatuses:     ArchiveFacetOption[];
+}
+
 export interface DoctrineReplayCoverageStat {
   tag:           string;
   replayPassed:  number;
@@ -303,4 +325,61 @@ export interface ThreatMatrixOverviewResponse {
   replayGaps:           number;
   highestThreatScore:   number;
   rows:                 ThreatMatrixRow[];
+}
+
+export interface DashboardCriticalCase {
+  caseId:            string;
+  title:             string;
+  severity:          CaseSeverity;
+  source:            string;
+  replayStatus:      ReplayStatus;
+  replayEligibility: boolean;
+  ingestedAt:        string;
+  updatedAt:         string;
+}
+
+export interface DashboardCriticalIntelligence {
+  timeframe:               '24h' | '7d' | '30d';
+  criticalCount:           number;
+  highCount:               number;
+  seriousTotal:            number;
+  replayableCount:         number;
+  defendedCount:           number;
+  defenseReadinessPct:     number;
+  criticalReplayMissing:   number;
+  highReplayMissing:       number;
+  topThreatFamily:         string | null;
+  latestSeriousCases:      DashboardCriticalCase[];
+}
+
+export interface DashboardOverviewResponse {
+  summary:       CaseLibrarySummaryStats;
+  metrics:       CaseLibraryMetrics;
+  doctrine:      DoctrineOverviewResponse;
+  threats:       ThreatMatrixOverviewResponse;
+  activity:      CaseLibraryActivityItem[];
+  criticalIntel: DashboardCriticalIntelligence;
+}
+
+export interface IncidentOverviewItem {
+  id:                         string;
+  title:                      string;
+  source:                     string;
+  severity:                   CaseSeverity;
+  status:                     string;
+  published_discovered_date:  string | null;
+  replay_validation_state:    string;
+  response_coverage_state:    string;
+}
+
+export interface IncidentsOverviewResponse {
+  total_incidents:                    number;
+  critical_incidents:                 number;
+  high_incidents:                     number;
+  medium_incidents:                   number;
+  low_incidents:                      number;
+  incidents_awaiting_replay:          number;
+  replay_validated_incidents:         number;
+  incidents_with_response_coverage:   number;
+  recent_incidents:                   IncidentOverviewItem[];
 }

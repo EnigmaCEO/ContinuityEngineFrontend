@@ -12,8 +12,23 @@ import {
   fetchMemberships,
   fetchUsers,
   rejectAccessRequest,
+  updateMembershipRole,
 } from "@/lib/saas/service";
 import type { AccessRequest, Account, MembershipDetail, MembershipRole, User } from "@/lib/saas/types";
+
+const membershipRoles: MembershipRole[] = [
+  "account_owner",
+  "security_admin",
+  "developer",
+  "operations_lead",
+  "reviewer",
+  "viewer",
+  "client_admin",
+  "client_member",
+  "client_viewer",
+  "super_admin",
+  "sce_operator",
+];
 
 const card: React.CSSProperties = {
   background: "rgba(10,12,18,0.92)",
@@ -94,10 +109,10 @@ export default function AdminAccountsPage() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1.15fr", gap: 16 }}>
         <section style={card}>
           <SectionTitle title={`Memberships (${memberships.length})`} />
-          <SimpleTable
+          <MembershipTable
             loading={loading}
-            headers={["User", "Account", "Role"]}
-            rows={memberships.map((item) => [item.user.email, item.account.name, item.membership.role])}
+            memberships={memberships}
+            onChanged={loadAll}
           />
         </section>
         <section style={card}>
@@ -274,10 +289,81 @@ function CreateMembershipCard({
       <SelectField
         label="Role"
         name="role"
-        options={["super_admin", "sce_operator", "client_admin", "client_member", "client_viewer"]}
+        options={membershipRoles}
       />
       <SubmitButton label="Create Membership" />
     </form>
+  );
+}
+
+function MembershipTable({
+  memberships,
+  loading,
+  onChanged,
+}: {
+  memberships: MembershipDetail[];
+  loading: boolean;
+  onChanged: () => Promise<void>;
+}) {
+  const [busyId, setBusyId] = useState<string>("");
+
+  async function handleRoleChange(membershipId: string, role: MembershipRole) {
+    setBusyId(membershipId);
+    try {
+      await updateMembershipRole(membershipId, role);
+      await onChanged();
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  if (loading) {
+    return <div style={{ color: "rgba(148,163,184,0.72)" }}>Loading...</div>;
+  }
+
+  return (
+    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <thead>
+        <tr>
+          {["User", "Account", "Role"].map((header) => (
+            <th
+              key={header}
+              style={{
+                textAlign: "left",
+                fontSize: 11,
+                color: "rgba(148,163,184,0.75)",
+                paddingBottom: 8,
+                borderBottom: "1px solid rgba(212,175,55,0.1)",
+              }}
+            >
+              {header}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {memberships.map((item) => (
+          <tr key={item.membership.id}>
+            <td style={tableCellStyle}>{item.user.email}</td>
+            <td style={tableCellStyle}>{item.account.name}</td>
+            <td style={tableCellStyle}>
+              <select
+                value={item.membership.role}
+                disabled={busyId === item.membership.id}
+                onChange={(event) => handleRoleChange(item.membership.id, event.target.value as MembershipRole)}
+                style={{ ...fieldStyle, padding: "7px 9px", maxWidth: 190 }}
+              >
+                {membershipRoles.map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+              </select>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -436,6 +522,13 @@ const fieldStyle: React.CSSProperties = {
   background: "rgba(15,23,42,0.74)",
   color: "#E2E8F0",
   padding: "10px 12px",
+};
+
+const tableCellStyle: React.CSSProperties = {
+  padding: "10px 0",
+  borderBottom: "1px solid rgba(212,175,55,0.06)",
+  fontSize: 13,
+  color: "#E2E8F0",
 };
 
 function actionButton(color: string, disabled: boolean): React.CSSProperties {

@@ -20,13 +20,14 @@ import {
   ChevronDown,
   Building2,
   LogOut,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 
 import { logout } from "@/lib/saas/service";
 import type { SaasMeResponse } from "@/lib/saas/types";
 
-type NavItem = { href: string; icon: LucideIcon; label: string };
+type NavItem = { href: string; icon: LucideIcon; label: string; accountManagerOnly?: boolean };
 type NavSection = { heading: string; items: NavItem[]; adminOnly?: boolean };
 
 const navSections: NavSection[] = [
@@ -44,11 +45,13 @@ const navSections: NavSection[] = [
     heading: "ACCOUNT OPERATIONS",
     items: [
       { href: "/dashboard/project-map", icon: Building2, label: "Project Map" },
+      { href: "/dashboard/defense-review", icon: ClipboardList, label: "Defense Reviews" },
       { href: "/dashboard/adapters", icon: Cpu, label: "Execution Adapters" },
       { href: "/dashboard/bridge-monitor", icon: Activity, label: "Bridge Monitor" },
       { href: "/dashboard/oracle-monitor", icon: Eye, label: "Oracle Monitor" },
       { href: "/dashboard/audit", icon: ShieldCheck, label: "Verification & Audit" },
       { href: "/dashboard/reports", icon: LayoutDashboard, label: "Reports" },
+      { href: "/dashboard/admin/accounts", icon: Building2, label: "Admin / Accounts", accountManagerOnly: true },
     ],
   },
   {
@@ -59,7 +62,6 @@ const navSections: NavSection[] = [
       { href: "/dashboard/blue-team", icon: Shield, label: "Blue Team" },
       { href: "/dashboard/black-ops", icon: EyeOff, label: "Black Ops" },
       { href: "/dashboard/settings", icon: Settings, label: "System Settings" },
-      { href: "/dashboard/admin/accounts", icon: Building2, label: "Admin / Accounts" },
     ],
   },
 ];
@@ -69,6 +71,9 @@ export function Sidebar({ me }: { me: SaasMeResponse }) {
   const visibleSections = navSections.filter((section) =>
     section.adminOnly ? me.permissions.canViewGlobalModules : true,
   );
+  const canUseAdminAccounts = me.isPreviewingRole
+    ? me.permissions.canManageAccounts
+    : me.permissions.canManageAccount || me.permissions.canManageAccounts;
   const initials = me.user.name
     .split(/\s+/)
     .map((part) => part[0]?.toUpperCase() ?? "")
@@ -152,7 +157,7 @@ export function Sidebar({ me }: { me: SaasMeResponse }) {
             >
               {section.heading}
             </div>
-            {section.items.map(({ href, icon: Icon, label }) => {
+            {section.items.filter((item) => !item.accountManagerOnly || canUseAdminAccounts).map(({ href, icon: Icon, label }) => {
               const isActive =
                 pathname === href ||
                 (href !== "/dashboard" && pathname.startsWith(href));

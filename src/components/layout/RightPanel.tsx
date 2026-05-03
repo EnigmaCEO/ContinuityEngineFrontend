@@ -1,4 +1,10 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Bell, Settings } from "lucide-react";
+import { fetchIncidentsOverview } from "@/lib/case-library/service";
+import type { IncidentOverviewItem, IncidentsOverviewResponse } from "@/lib/case-library/types";
 import type { SaasMeResponse } from "@/lib/saas/types";
 
 const alerts = [
@@ -36,14 +42,6 @@ const alerts = [
   },
 ];
 
-const timeline = [
-  { time: "14:36:21", label: "Bridge Anomaly Detected",      source: "SigmaBridge",       color: "#EF4444" },
-  { time: "14:34:02", label: "Unusual Transaction Pattern",  source: "EVM Network",        color: "#F97316" },
-  { time: "14:28:11", label: "Oracle Deviation Threshold",   source: "Chainlink ETH/USD",  color: "#D4AF37" },
-  { time: "14:22:47", label: "Rate Limit Approaching",       source: "API Gateway",        color: "#A855F7" },
-  { time: "14:15:33", label: "Policy Update Applied",        source: "Doctrine Engine",    color: "#22C55E" },
-];
-
 const feed = [
   { time: "14:37:15", label: "Policy signature verified",     source: "Doctrine Engine" },
   { time: "14:37:02", label: "Heartbeat: Bridge SigmaBridge", source: "Bridge Monitor" },
@@ -63,10 +61,39 @@ const S = {
     color: "rgba(212,175,55,0.65)",
     letterSpacing: "0.06em",
     cursor: "pointer",
+    textDecoration: "none",
   } as React.CSSProperties,
 };
 
+function incidentSeverityColor(severity: string | null | undefined): string {
+  if (severity === "critical") return "#EF4444";
+  if (severity === "high") return "#F97316";
+  if (severity === "medium") return "#D4AF37";
+  return "#22C55E";
+}
+
+function formatIncidentTime(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 export function RightPanel({ me }: { me: SaasMeResponse }) {
+  const [incidents, setIncidents] = useState<IncidentsOverviewResponse | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchIncidentsOverview()
+      .then((data) => {
+        if (!cancelled) setIncidents(data);
+      })
+      .catch(() => { /* non-critical, right rail degrades gracefully */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const recentIncidents: IncidentOverviewItem[] = incidents?.recent_incidents?.slice(0, 5) ?? [];
+
   const initials = me.user.name
     .split(/\s+/)
     .map((part) => part[0]?.toUpperCase() ?? "")
@@ -157,7 +184,7 @@ export function RightPanel({ me }: { me: SaasMeResponse }) {
         </div>
       </div>
 
-      {/* Live Alerts */}
+      {/* Live Alerts — max 4 */}
       <div
         style={{
           padding: "13px 16px",
@@ -206,7 +233,7 @@ export function RightPanel({ me }: { me: SaasMeResponse }) {
               {me.activeAccount?.name ?? "No account"} · {me.currentRole ?? "unassigned"}
             </div>
           </div>
-          {alerts.map((alert, i) => (
+          {alerts.slice(0, 4).map((alert, i) => (
             <div
               key={i}
               style={{
@@ -271,7 +298,7 @@ export function RightPanel({ me }: { me: SaasMeResponse }) {
         </div>
       </div>
 
-      {/* Incident Timeline */}
+      {/* Incident Timeline — live recent incidents, max 5 */}
       <div
         style={{
           padding: "13px 16px",
@@ -287,75 +314,88 @@ export function RightPanel({ me }: { me: SaasMeResponse }) {
           }}
         >
           <span style={S.sectionTitle}>INCIDENT TIMELINE</span>
-          <span style={S.viewAll}>VIEW ALL</span>
+          <Link href="/dashboard/incidents" style={S.viewAll}>VIEW ALL</Link>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          {timeline.map((item, i) => (
-            <div
-              key={i}
-              style={{
-                display: "flex",
-                gap: 9,
-                paddingBottom: 10,
-                position: "relative",
-              }}
+          {recentIncidents.length > 0 ? recentIncidents.map((item, i) => (
+            <Link
+              key={item.id}
+              href={`/dashboard/incidents/${encodeURIComponent(item.id)}`}
+              style={{ textDecoration: "none" }}
             >
-              {/* Connecting line */}
-              {i < timeline.length - 1 && (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 42,
-                    top: 12,
-                    bottom: 0,
-                    width: 1,
-                    background: "rgba(212,175,55,0.12)",
-                  }}
-                />
-              )}
-              <span
-                style={{
-                  fontSize: 9,
-                  color: "rgba(140,140,170,0.65)",
-                  fontFamily: "monospace",
-                  minWidth: 40,
-                  textAlign: "right",
-                  flexShrink: 0,
-                  paddingTop: 1,
-                }}
-              >
-                {item.time}
-              </span>
               <div
                 style={{
-                  width: 9,
-                  height: 9,
-                  borderRadius: "50%",
-                  background: item.color,
-                  flexShrink: 0,
-                  marginTop: 2,
-                  boxShadow: `0 0 5px ${item.color}60`,
+                  display: "flex",
+                  gap: 9,
+                  paddingBottom: 10,
+                  position: "relative",
                 }}
-              />
-              <div>
-                <div
+              >
+                {i < recentIncidents.length - 1 && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 42,
+                      top: 12,
+                      bottom: 0,
+                      width: 1,
+                      background: "rgba(212,175,55,0.12)",
+                    }}
+                  />
+                )}
+                <span
                   style={{
-                    fontSize: 10.5,
-                    color: "#CBD5E1",
-                    fontWeight: 500,
+                    fontSize: 9,
+                    color: "rgba(140,140,170,0.65)",
+                    fontFamily: "monospace",
+                    minWidth: 40,
+                    textAlign: "right",
+                    flexShrink: 0,
+                    paddingTop: 1,
                   }}
                 >
-                  {item.label}
-                </div>
-                <div style={{ fontSize: 9, color: "rgba(140,140,170,0.6)" }}>
-                  {item.source}
+                  {formatIncidentTime(item.published_discovered_date)}
+                </span>
+                <div
+                  style={{
+                    width: 9,
+                    height: 9,
+                    borderRadius: "50%",
+                    background: incidentSeverityColor(item.severity),
+                    flexShrink: 0,
+                    marginTop: 2,
+                    boxShadow: `0 0 5px ${incidentSeverityColor(item.severity)}60`,
+                  }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: 10.5,
+                      color: "#CBD5E1",
+                      fontWeight: 500,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {item.title || item.id}
+                  </div>
+                  <div style={{ fontSize: 9, color: "rgba(140,140,170,0.6)" }}>
+                    {item.source || "Unknown source"}
+                  </div>
                 </div>
               </div>
+            </Link>
+          )) : (
+            <div style={{ fontSize: 10, color: "rgba(140,140,170,0.55)", paddingBottom: 8 }}>
+              No recent incidents.
             </div>
-          ))}
+          )}
         </div>
-        <button
+        <Link
+          href="/dashboard/incidents"
           style={{
+            display: "block",
             width: "100%",
             marginTop: 2,
             padding: "8px 0",
@@ -366,13 +406,15 @@ export function RightPanel({ me }: { me: SaasMeResponse }) {
             color: "rgba(212,175,55,0.75)",
             cursor: "pointer",
             letterSpacing: "0.1em",
+            textDecoration: "none",
+            textAlign: "center",
           }}
         >
           VIEW INCIDENT CENTER
-        </button>
+        </Link>
       </div>
 
-      {/* System Feed */}
+      {/* System Feed — max 4 */}
       <div style={{ padding: "13px 16px", flex: 1 }}>
         <div
           style={{
@@ -386,7 +428,7 @@ export function RightPanel({ me }: { me: SaasMeResponse }) {
           <span style={S.viewAll}>VIEW FULL FEED</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          {feed.map((item, i) => (
+          {feed.slice(0, 4).map((item, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
               <span
                 style={{

@@ -4,6 +4,12 @@ export type UserStatus = "active" | "invited" | "disabled";
 export type MembershipRole =
   | "super_admin"
   | "sce_operator"
+  | "account_owner"
+  | "security_admin"
+  | "developer"
+  | "operations_lead"
+  | "reviewer"
+  | "viewer"
   | "client_admin"
   | "client_member"
   | "client_viewer";
@@ -50,6 +56,14 @@ export interface SaasPermissions {
   canViewGlobalModules: boolean;
   canManageSources: boolean;
   canManageAccounts: boolean;
+  canManageAccount: boolean;
+  canManageProjects: boolean;
+  canEditAssets: boolean;
+  canRunScans: boolean;
+  canGenerateControls: boolean;
+  canSubmitEvidence: boolean;
+  canVerifyControls: boolean;
+  canViewOnly: boolean;
 }
 
 export interface SaasMeResponse {
@@ -58,6 +72,10 @@ export interface SaasMeResponse {
   memberships: MembershipDetail[];
   permissions: SaasPermissions;
   currentRole?: MembershipRole | null;
+  realRole?: MembershipRole | null;
+  effectiveRole?: MembershipRole | null;
+  previewRole?: MembershipRole | null;
+  isPreviewingRole?: boolean;
   sessionMode: string;
   sessionToken?: string | null;
 }

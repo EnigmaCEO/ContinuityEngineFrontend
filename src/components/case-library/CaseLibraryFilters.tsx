@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { Search, XCircle, Calendar } from 'lucide-react';
-import type { CaseSeverity, ReplayStatus, DoctrineStatus, CaseStatus } from '@/lib/case-library/types';
+import type { ArchiveFacetOption, CaseSeverity, ReplayStatus, DoctrineStatus, CaseStatus } from '@/lib/case-library/types';
 import { CLR } from '@/lib/case-library/utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -25,9 +25,14 @@ interface Props {
   filters:       FilterState;
   onChange:      (patch: Partial<FilterState>) => void;
   onReset:       () => void;
-  uniqueTypes:   string[];
-  uniqueSources: string[];
-  uniqueChains:  string[];
+  uniqueTypes:   ArchiveFacetOption[];
+  uniqueSources: ArchiveFacetOption[];
+  uniqueChains:  ArchiveFacetOption[];
+  severities:    ArchiveFacetOption[];
+  replayStatuses:   ArchiveFacetOption[];
+  doctrineStatuses: ArchiveFacetOption[];
+  caseStatuses:     ArchiveFacetOption[];
+  facetsLoading?: boolean;
 }
 
 // ─── Date preset helpers ──────────────────────────────────────────────────────
@@ -61,23 +66,33 @@ function presetRange(preset: DatePreset): { from: string; to: string } {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function Select({
-  value, onChange, options, placeholder,
+  value, onChange, options, placeholder, disabled,
 }: {
-  value: string; onChange: (v: string) => void; options: string[]; placeholder: string;
+  value: string; onChange: (v: string) => void; options: ArchiveFacetOption[]; placeholder: string; disabled?: boolean;
 }) {
+  const visibleOptions = value && !options.some((o) => o.value === value)
+    ? [{ value, label: value, count: 0 }, ...options]
+    : options;
+
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
       style={{
         background: 'rgba(10,12,18,0.9)', border: `1px solid ${CLR.border}`,
         borderRadius: 5, padding: '4px 7px', fontSize: 10.5,
-        color: value ? CLR.text : CLR.muted, cursor: 'pointer',
+        color: value ? CLR.text : CLR.muted, cursor: disabled ? 'not-allowed' : 'pointer',
         outline: 'none', minWidth: 100, height: 27,
+        opacity: disabled ? 0.62 : 1,
       }}
     >
-      <option value="">{placeholder}</option>
-      {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      <option value="">{disabled ? `${placeholder} loading` : placeholder}</option>
+      {visibleOptions.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.count > 0 ? `${o.label} (${o.count})` : o.label}
+        </option>
+      ))}
     </select>
   );
 }
@@ -107,6 +122,7 @@ function PresetBtn({
 
 export function CaseLibraryFilters({
   filters, onChange, onReset, uniqueTypes, uniqueSources, uniqueChains,
+  severities, replayStatuses, doctrineStatuses, caseStatuses, facetsLoading,
 }: Props) {
   const hasFilters = (
     !!filters.search || !!filters.severity || !!filters.type ||
@@ -168,48 +184,51 @@ export function CaseLibraryFilters({
         <Select
           value={filters.severity}
           onChange={(v) => onChange({ severity: v as CaseSeverity | '' })}
-          options={['critical', 'high', 'medium', 'low']}
+          options={severities}
           placeholder="Severity"
+          disabled={facetsLoading && severities.length === 0}
         />
         <Select
           value={filters.type}
           onChange={(v) => onChange({ type: v })}
           options={uniqueTypes}
           placeholder="Type"
+          disabled={facetsLoading && uniqueTypes.length === 0}
         />
         <Select
           value={filters.source}
           onChange={(v) => onChange({ source: v })}
           options={uniqueSources}
           placeholder="Source"
+          disabled={facetsLoading && uniqueSources.length === 0}
         />
         <Select
           value={filters.chainSystem}
           onChange={(v) => onChange({ chainSystem: v })}
           options={uniqueChains}
           placeholder="Chain"
+          disabled={facetsLoading && uniqueChains.length === 0}
         />
         <Select
           value={filters.replayStatus}
           onChange={(v) => onChange({ replayStatus: v as ReplayStatus | '' })}
-          options={['available', 'missing', 'passed', 'failed', 'pending']}
+          options={replayStatuses}
           placeholder="Replay"
+          disabled={facetsLoading && replayStatuses.length === 0}
         />
         <Select
           value={filters.doctrineStatus}
           onChange={(v) => onChange({ doctrineStatus: v as DoctrineStatus | '' })}
-          options={['linked', 'pending', 'updated', 'none']}
+          options={doctrineStatuses}
           placeholder="Doctrine"
+          disabled={facetsLoading && doctrineStatuses.length === 0}
         />
         <Select
           value={filters.status}
           onChange={(v) => onChange({ status: v as CaseStatus | '' })}
-          options={[
-            'ingested', 'normalized', 'classified', 'replay_ready',
-            'doctrine_tagged', 'verified', 'needs_review',
-            'raw_ingested', 'failed_normalization', 'failed_classification',
-          ]}
+          options={caseStatuses}
           placeholder="Status"
+          disabled={facetsLoading && caseStatuses.length === 0}
         />
 
         {hasFilters && (

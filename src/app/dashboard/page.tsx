@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -23,23 +23,22 @@ import {
 
 import { useSession } from "@/components/layout/SessionContext";
 import {
-  fetchActivity,
-  fetchCases,
-  fetchDoctrineOverview,
-  fetchMetrics,
-  fetchSummaryStats,
-  fetchThreatMatrixOverview,
+  fetchDashboardOverview,
+  fetchIncidentsOverview,
 } from "@/lib/case-library/service";
 import type {
   CaseLibraryActivityItem,
-  CaseLibraryRecord,
   CaseLibraryMetrics,
-  CaseLibraryTableParams,
   CaseLibrarySummaryStats,
+  DashboardCriticalCase,
+  DashboardCriticalIntelligence,
   DoctrineOverviewResponse,
+  IncidentsOverviewResponse,
   ThreatMatrixOverviewResponse,
 } from "@/lib/case-library/types";
-import { fetchAccessRequests, fetchAccounts, fetchUsers } from "@/lib/saas/service";
+import { fetchProjectAccountOverview } from "@/lib/project-map/service";
+import type { ProjectAccountOverview } from "@/lib/project-map/types";
+import { fetchAdminSummary } from "@/lib/saas/service";
 
 const GOLD = "#D4AF37";
 const PURPLE = "#2A1F4A";
@@ -62,20 +61,6 @@ type AdminCounts = {
   accounts: number;
   users: number;
   accessRequests: number;
-};
-
-type CriticalIntelligence = {
-  timeframe: "24h" | "7d" | "30d";
-  criticalCount: number;
-  highCount: number;
-  seriousTotal: number;
-  replayableCount: number;
-  defendedCount: number;
-  defenseReadinessPct: number;
-  criticalReplayMissing: number;
-  highReplayMissing: number;
-  topThreatFamily: string | null;
-  latestSeriousCases: CaseLibraryRecord[];
 };
 
 function loadable<T>(): Loadable<T> {
@@ -173,34 +158,42 @@ function formatRelativeTime(value: string | null | undefined): string {
   return `${Math.round(diffHr / 24)}d ago`;
 }
 
-function defenseStatus(caseItem: CaseLibraryRecord): { label: string; color: string } {
-  if (caseItem.replayStatus === "passed") return { label: "DEFENDED", color: "#22C55E" };
+function replayStatusForCase(caseItem: DashboardCriticalCase): { label: string; color: string } {
+  if (caseItem.replayStatus === "passed") return { label: "REPLAY VALIDATED", color: "#22C55E" };
   if (caseItem.replayEligibility === true) return { label: "REPLAYABLE", color: GOLD };
   if (caseItem.replayEligibility === false) return { label: "NOT REPLAYABLE", color: "rgba(148,163,184,0.85)" };
   return { label: "REPLAY MISSING", color: "#EF4444" };
 }
 
-function isoWindowStart(timeframe: "24h" | "7d" | "30d"): string {
-  const now = new Date();
-  const start = new Date(now);
-  if (timeframe === "24h") start.setHours(now.getHours() - 24);
-  if (timeframe === "7d") start.setDate(now.getDate() - 7);
-  if (timeframe === "30d") start.setDate(now.getDate() - 30);
-  return start.toISOString();
-}
-
-function toDateInputValue(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 10);
-}
-
-function caseTimestamp(caseItem: CaseLibraryRecord): string | null {
+function caseTimestamp(caseItem: DashboardCriticalCase): string | null {
   return caseItem.ingestedAt || caseItem.updatedAt || null;
 }
 
-function compareRecentCases(a: CaseLibraryRecord, b: CaseLibraryRecord): number {
+function compareRecentCases(a: DashboardCriticalCase, b: DashboardCriticalCase): number {
   return new Date(caseTimestamp(b) ?? 0).getTime() - new Date(caseTimestamp(a) ?? 0).getTime();
+}
+
+function formatIncidentDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function incidentSeverityColor(severity: string | null | undefined): string {
+  if (severity === "critical") return "#EF4444";
+  if (severity === "high") return "#F97316";
+  if (severity === "medium") return GOLD;
+  return "#22C55E";
+}
+
+function coveragePendingCount(data: IncidentsOverviewResponse | null): number | null {
+  if (!data) return null;
+  return Math.max(0, data.total_incidents - data.incidents_with_response_coverage);
 }
 
 function isOperatorRole(role: string | null | undefined): boolean {
@@ -219,6 +212,21 @@ function toneForSeverity(severity?: string): string {
   if (severity === "critical" || severity === "high") return "#EF4444";
   if (severity === "medium") return GOLD;
   return "#22C55E";
+}
+
+function formatFindingType(value: string): string {
+  return value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatLabel(value: string | null | undefined): string {
+  if (!value) return "Unavailable";
+  return value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function SectionHead({
@@ -291,35 +299,6 @@ function SectionHead({
   );
 }
 
-function MetricCell({
-  label,
-  value,
-  helper,
-  data,
-  color,
-}: {
-  label: string;
-  value: string;
-  helper: string;
-  data: number[];
-  color: string;
-}) {
-  return (
-    <div>
-      <div style={{ fontSize: 8.5, color: MUTED, letterSpacing: "0.08em", marginBottom: 2 }}>
-        {label}
-      </div>
-      <div style={{ fontSize: 16, fontWeight: 700, color: TEXT, lineHeight: 1 }}>
-        {value}
-      </div>
-      <div style={{ fontSize: 9, color: MUTED, marginTop: 3, minHeight: 24 }}>{helper}</div>
-      <div style={{ marginTop: 6 }}>
-        <Sparkline data={data} color={color} w={88} h={20} />
-      </div>
-    </div>
-  );
-}
-
 function StatusPill({ label, color }: { label: string; color: string }) {
   return (
     <span
@@ -353,8 +332,13 @@ function LoadingOrUnavailable({
 
 export default function DashboardPage() {
   const me = useSession();
-  const role = me?.currentRole ?? null;
+  const role = me?.effectiveRole ?? me?.currentRole ?? null;
+  const realRole = me?.realRole ?? me?.currentRole ?? null;
   const isOperator = isOperatorRole(role);
+  const renderCountRef = useRef(0);
+  const dashboardLoadedRef = useRef(false);
+  const projectLoadedRef = useRef(false);
+  const incidentsLoadedRef = useRef(false);
   const [criticalWindow, setCriticalWindow] = useState<"24h" | "7d" | "30d">("7d");
 
   const [summary, setSummary] = useState<Loadable<CaseLibrarySummaryStats>>(loadable());
@@ -362,125 +346,108 @@ export default function DashboardPage() {
   const [doctrine, setDoctrine] = useState<Loadable<DoctrineOverviewResponse>>(loadable());
   const [threats, setThreats] = useState<Loadable<ThreatMatrixOverviewResponse>>(loadable());
   const [activity, setActivity] = useState<Loadable<CaseLibraryActivityItem[]>>(loadable());
-  const [criticalIntel, setCriticalIntel] = useState<Loadable<CriticalIntelligence>>(loadable());
+  const [criticalIntel, setCriticalIntel] = useState<Loadable<DashboardCriticalIntelligence>>(loadable());
+  const [incidents, setIncidents] = useState<Loadable<IncidentsOverviewResponse>>(loadable());
+  const [projectOverview, setProjectOverview] = useState<Loadable<ProjectAccountOverview>>(loadable());
   const [adminCounts, setAdminCounts] = useState<Loadable<AdminCounts>>({
     data: null,
     loading: isOperator,
     error: false,
   });
 
+  renderCountRef.current += 1;
+  console.info(`[dashboard:render] count=${renderCountRef.current} window=${criticalWindow}`);
+
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
 
     async function load() {
-      const [summaryResult, metricsResult, doctrineResult, threatsResult, activityResult] =
-        await Promise.allSettled([
-          fetchSummaryStats(),
-          fetchMetrics(),
-          fetchDoctrineOverview(),
-          fetchThreatMatrixOverview(),
-          fetchActivity(8),
-        ]);
-
-      if (cancelled) return;
-
-      setSummary({
-        data: summaryResult.status === "fulfilled" ? summaryResult.value : null,
-        loading: false,
-        error: summaryResult.status === "rejected",
-      });
-      setMetrics({
-        data: metricsResult.status === "fulfilled" ? metricsResult.value : null,
-        loading: false,
-        error: metricsResult.status === "rejected",
-      });
-      setDoctrine({
-        data: doctrineResult.status === "fulfilled" ? doctrineResult.value : null,
-        loading: false,
-        error: doctrineResult.status === "rejected",
-      });
-      setThreats({
-        data: threatsResult.status === "fulfilled" ? threatsResult.value : null,
-        loading: false,
-        error: threatsResult.status === "rejected",
-      });
-      setActivity({
-        data: activityResult.status === "fulfilled" ? activityResult.value : null,
-        loading: false,
-        error: activityResult.status === "rejected",
-      });
-
+      if (dashboardLoadedRef.current) {
+        setSummary((current) => ({ data: current.data, loading: true, error: false }));
+        setMetrics((current) => ({ data: current.data, loading: true, error: false }));
+        setDoctrine((current) => ({ data: current.data, loading: true, error: false }));
+        setThreats((current) => ({ data: current.data, loading: true, error: false }));
+        setActivity((current) => ({ data: current.data, loading: true, error: false }));
+        setCriticalIntel((current) => ({ data: current.data, loading: true, error: false }));
+      }
+      try {
+        const result = await fetchDashboardOverview(criticalWindow, controller.signal);
+        if (cancelled) return;
+        dashboardLoadedRef.current = true;
+        setSummary({ data: result.summary, loading: false, error: false });
+        setMetrics({ data: result.metrics, loading: false, error: false });
+        setDoctrine({ data: result.doctrine, loading: false, error: false });
+        setThreats({ data: result.threats, loading: false, error: false });
+        setActivity({ data: result.activity, loading: false, error: false });
+        setCriticalIntel({ data: result.criticalIntel, loading: false, error: false });
+      } catch (error) {
+        if (cancelled || (error instanceof DOMException && error.name === "AbortError")) return;
+        setSummary({ data: null, loading: false, error: true });
+        setMetrics({ data: null, loading: false, error: true });
+        setDoctrine({ data: null, loading: false, error: true });
+        setThreats({ data: null, loading: false, error: true });
+        setActivity({ data: null, loading: false, error: true });
+        setCriticalIntel({ data: null, loading: false, error: true });
+      }
     }
 
     void load();
     return () => {
       cancelled = true;
+      controller.abort();
+    };
+  }, [criticalWindow]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+
+    async function loadIncidentsOverview() {
+      if (incidentsLoadedRef.current) {
+        setIncidents((current) => ({ data: current.data, loading: true, error: false }));
+      }
+      try {
+        const overview = await fetchIncidentsOverview(controller.signal);
+        if (cancelled) return;
+        incidentsLoadedRef.current = true;
+        setIncidents({ data: overview, loading: false, error: false });
+      } catch (error) {
+        if (cancelled || (error instanceof DOMException && error.name === "AbortError")) return;
+        setIncidents({ data: null, loading: false, error: true });
+      }
+    }
+
+    void loadIncidentsOverview();
+    return () => {
+      cancelled = true;
+      controller.abort();
     };
   }, []);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadCriticalIntel() {
-      setCriticalIntel((current) => ({ data: current.data, loading: true, error: false }));
-
-      const baseParams: Pick<CaseLibraryTableParams, "page" | "pageSize" | "sortBy" | "sortDir" | "ingestedFrom"> = {
-        ingestedFrom: toDateInputValue(isoWindowStart(criticalWindow)),
-        page: 1,
-        pageSize: 100,
-        sortBy: "ingestedAt",
-        sortDir: "desc",
-      };
-
+    async function loadProjectOverview() {
+      if (projectLoadedRef.current) {
+        setProjectOverview((current) => ({ data: current.data, loading: true, error: false }));
+      }
       try {
-        const [criticalCases, highCases] = await Promise.all([
-          fetchCases({ ...baseParams, severity: "critical" }),
-          fetchCases({ ...baseParams, severity: "high" }),
-        ]);
-
+        const overview = await fetchProjectAccountOverview();
         if (cancelled) return;
-
-        const seriousCases = [...criticalCases.items, ...highCases.items].sort(compareRecentCases);
-        const seriousTotal = criticalCases.total + highCases.total;
-        const replayableCount = seriousCases.filter(
-          (item) =>
-            item.replayEligibility === true ||
-            item.replayStatus === "available" ||
-            item.replayStatus === "passed" ||
-            item.replayStatus === "pending",
-        ).length;
-        const defendedCount = seriousCases.filter((item) => item.replayStatus === "passed").length;
-        const criticalReplayMissing = criticalCases.items.filter((item) => item.replayStatus !== "passed").length;
-        const highReplayMissing = highCases.items.filter((item) => item.replayStatus !== "passed").length;
-
-        setCriticalIntel({
-          data: {
-            timeframe: criticalWindow,
-            criticalCount: criticalCases.total,
-            highCount: highCases.total,
-            seriousTotal,
-            replayableCount,
-            defendedCount,
-            defenseReadinessPct: seriousTotal > 0 ? (defendedCount / seriousTotal) * 100 : 0,
-            criticalReplayMissing,
-            highReplayMissing,
-            topThreatFamily: threats.data?.rows?.[0]?.threatFamily ?? null,
-            latestSeriousCases: seriousCases.sort(compareSeriousCases).slice(0, 5),
-          },
-          loading: false,
-          error: false,
-        });
+        projectLoadedRef.current = true;
+        setProjectOverview({ data: overview, loading: false, error: false });
       } catch {
         if (cancelled) return;
-        setCriticalIntel({ data: null, loading: false, error: true });
+        setProjectOverview({ data: null, loading: false, error: true });
       }
     }
 
-    void loadCriticalIntel();
+    void loadProjectOverview();
     return () => {
       cancelled = true;
     };
-  }, [criticalWindow, threats.data]);
+  }, []);
 
   useEffect(() => {
     if (!isOperator) return;
@@ -489,33 +456,14 @@ export default function DashboardPage() {
   
     async function loadCounts() {
       setAdminCounts({ data: null, loading: true, error: false });
-  
-      const [accountsResult, usersResult, requestsResult] = await Promise.allSettled([
-        fetchAccounts(),
-        fetchUsers(),
-        fetchAccessRequests(),
-      ]);
-  
-      if (cancelled) return;
-  
-      if (
-        accountsResult.status === "fulfilled" &&
-        usersResult.status === "fulfilled" &&
-        requestsResult.status === "fulfilled"
-      ) {
-        setAdminCounts({
-          data: {
-            accounts: accountsResult.value.length,
-            users: usersResult.value.length,
-            accessRequests: requestsResult.value.length,
-          },
-          loading: false,
-          error: false,
-        });
-        return;
+      try {
+        const counts = await fetchAdminSummary();
+        if (cancelled) return;
+        setAdminCounts({ data: counts, loading: false, error: false });
+      } catch {
+        if (cancelled) return;
+        setAdminCounts({ data: null, loading: false, error: true });
       }
-  
-      setAdminCounts({ data: null, loading: false, error: true });
     }
   
     queueMicrotask(() => {
@@ -528,14 +476,14 @@ export default function DashboardPage() {
   }, [isOperator]);
 
   const portalSignals = useMemo(() => {
-    const signals = [summary, metrics, doctrine, threats, activity];
+    const signals = [summary, metrics, doctrine, threats, activity, incidents];
     const online = signals.filter((item) => item.data && !item.error).length;
     return {
       online,
       total: signals.length,
       reachable: online > 0,
     };
-  }, [summary, metrics, doctrine, threats, activity]);
+  }, [summary, metrics, doctrine, threats, activity, incidents]);
 
   const recentActivity = useMemo(() => {
     const rows = activity.data ?? [];
@@ -557,20 +505,38 @@ export default function DashboardPage() {
     });
   }, [recentActivity, activity.data]);
 
-  const threatSegments = useMemo(() => {
-    const rows = threats.data?.rows ?? [];
-    const critical = rows.filter((row) => row.criticalCount > 0).length;
-    const high = rows.filter((row) => row.highCount > 0 && row.criticalCount === 0).length;
-    const replayGap = rows.filter((row) => row.replayMissing > 0).length;
-    const covered = rows.filter((row) => row.replayMissing === 0 && row.caseCount > 0).length;
-    const segments = [
-      { label: "Critical", count: critical, color: "#EF4444" },
-      { label: "High", count: high, color: "#F97316" },
-      { label: "Replay Gap", count: replayGap, color: GOLD },
-      { label: "Covered", count: covered, color: "#22C55E" },
-    ].filter((item) => item.count > 0);
+  const THREAT_FAMILY_COLORS: Record<string, string> = {
+    "Dependency / Supply Chain":      "#8B5CF6",
+    "Admin Key / Access Control":     "#EF4444",
+    "Frontend / DNS / Interface":     "#3B82F6",
+    "Governance / Quorum / Timelock": "#F59E0B",
+    "Bridge / Cross-chain":           "#06B6D4",
+    "Oracle / Price Feed":            "#22C55E",
+    "Keeper / Liveness":              "#F97316",
+    "Stablecoin / Depeg":             "#EC4899",
+    "Treasury / Accounting":          "#D4AF37",
+    "DeFi Protocol Incident":         "#64748B",
+    "Unknown / Unclassified":         "rgba(148,163,184,0.5)",
+  };
+  const FALLBACK_COLORS = ["#6366F1", "#14B8A6", "#A78BFA", "#34D399", "#FB923C"];
 
-    return segments.length > 0 ? segments : [{ label: "Unavailable", count: 1, color: "rgba(148,163,184,0.7)" }];
+  const threatSegments = useMemo(() => {
+    const rows = (threats.data?.rows ?? [])
+      .filter((r) => r.caseCount > 0)
+      .sort((a, b) => b.caseCount - a.caseCount);
+    const total = rows.reduce((s, r) => s + r.caseCount, 0) || 1;
+    const top5 = rows.slice(0, 5);
+    const restCount = rows.slice(5).reduce((s, r) => s + r.caseCount, 0);
+    const segments = top5.map((r, i) => ({
+      label: r.threatFamily,
+      count: r.caseCount,
+      pct: Math.round((r.caseCount / total) * 100),
+      color: THREAT_FAMILY_COLORS[r.threatFamily] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+    }));
+    if (restCount > 0) {
+      segments.push({ label: "Other", count: restCount, pct: Math.round((restCount / total) * 100), color: "rgba(100,116,139,0.55)" });
+    }
+    return segments.length > 0 ? segments : [{ label: "No Data", count: 1, pct: 100, color: "rgba(148,163,184,0.35)" }];
   }, [threats.data]);
 
   const threatPaths = useMemo(() => {
@@ -580,13 +546,15 @@ export default function DashboardPage() {
       const start = cursor;
       const end = cursor + (segment.count / total) * 360;
       cursor = end;
-      return { ...segment, path: donutArcPath(start, end, 48, 48, 36, 22) };
+      return { ...segment, path: donutArcPath(start, end, 48, 48, 41, 28) };
     });
   }, [threatSegments]);
 
   const doctrineRows = doctrine.data?.rows ?? [];
   const topDoctrineTags = doctrineRows.slice(0, 3);
   const topThreatFamily = threats.data?.rows?.[0];
+  const incidentData = incidents.data;
+  const incidentCoveragePending = coveragePendingCount(incidentData);
   const criticalSpark = [
     criticalIntel.data?.criticalCount ?? 0,
     criticalIntel.data?.highCount ?? 0,
@@ -594,11 +562,26 @@ export default function DashboardPage() {
     criticalIntel.data?.defendedCount ?? 0,
   ];
   const accountName = me?.activeAccount?.name ?? "No active account";
+  const sessionMode = me?.sessionMode === "dev_placeholder" ? "Dev Mode" : formatLabel(me?.sessionMode ?? "Active");
   const membershipSummary = !me?.memberships?.length
     ? "No memberships"
     : me.memberships.length === 1
       ? "1 membership"
       : `${me.memberships.length} memberships`;
+  const projectData = projectOverview.data;
+  const hasProjects = (projectData?.projectCount ?? 0) > 0;
+  const hasScanResults = (projectData?.findingCount ?? 0) > 0;
+  const projectMapStatus = !hasProjects
+    ? "Project Map not configured."
+    : hasScanResults
+      ? `${formatCount(projectData?.openFindingCount)} open findings`
+      : "Project mapped - admin surface scan pending.";
+  const authorityStatus = !hasProjects
+    ? "Project Map not configured."
+    : hasScanResults
+      ? `${projectData?.highestSeverity?.toUpperCase() ?? "MAPPED"} authority risk`
+      : "Admin surface scan pending.";
+  const topFindingTypes = Object.entries(projectData?.findingTypeCounts ?? {}).slice(0, 3);
 
   function severityPriority(severity: string | null | undefined): number {
     const s = (severity ?? "").toLowerCase();
@@ -638,8 +621,7 @@ export default function DashboardPage() {
         style={{
           position: "relative",
           textAlign: "center",
-          padding: "28px 20px 32px",
-          minHeight: 220,
+          padding: "10px 20px 12px",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -652,74 +634,95 @@ export default function DashboardPage() {
             position: "absolute",
             inset: 0,
             background:
-              `radial-gradient(ellipse 90% 160% at 50% 120%, rgba(42,31,74,0.48) 0%, rgba(32,24,58,0.3) 30%, rgba(18,14,32,0.16) 55%, transparent 72%)`,
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              `radial-gradient(ellipse 50% 60% at 50% 90%, rgba(65,47,112,0.24) 0%, transparent 60%)`,
+              `radial-gradient(ellipse 80% 120% at 50% 100%, rgba(42,31,74,0.35) 0%, rgba(18,14,32,0.12) 55%, transparent 72%)`,
             pointerEvents: "none",
           }}
         />
 
         <div style={{ position: "relative", zIndex: 1 }}>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 42,
-              fontWeight: 800,
-              letterSpacing: "0.28em",
-              color: GOLD,
-              textShadow: "0 0 30px rgba(212,175,55,0.55), 0 0 60px rgba(212,175,55,0.2)",
-              lineHeight: 1,
-            }}
-          >
-            SCE PORTAL
-          </h1>
-          <p
-            style={{
-              margin: "6px 0 14px",
-              fontSize: 10.5,
-              letterSpacing: "0.55em",
-              color: "rgba(212,175,55,0.55)",
-            }}
-          >
-            LIVE COMMAND OVERVIEW
-          </p>
-
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 10,
-              border: "1px solid rgba(212,175,55,0.28)",
-              borderRadius: 4,
-              padding: "4px 14px",
-              background: "rgba(0,0,0,0.3)",
-            }}
-          >
-            <span
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
+            <h1
               style={{
-                fontSize: 8.5,
-                letterSpacing: "0.18em",
-                color: "rgba(212,175,55,0.65)",
+                margin: 0,
+                fontSize: 22,
+                fontWeight: 800,
+                letterSpacing: "0.22em",
+                color: GOLD,
+                textShadow: "0 0 20px rgba(212,175,55,0.4)",
+                lineHeight: 1,
               }}
             >
-              COMMAND STATUS
+              SCE PORTAL
+            </h1>
+            <span
+              style={{
+                fontSize: 9,
+                letterSpacing: "0.4em",
+                color: "rgba(212,175,55,0.45)",
+              }}
+            >
+              LIVE COMMAND OVERVIEW
             </span>
-            <StatusPill
-              label={portalSignals.reachable ? "LIVE DATA ONLINE" : "PARTIAL DATA"}
-              color={portalSignals.reachable ? "#22C55E" : GOLD}
-            />
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                border: "1px solid rgba(212,175,55,0.22)",
+                borderRadius: 4,
+                padding: "3px 10px",
+                background: "rgba(0,0,0,0.28)",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 8,
+                  letterSpacing: "0.14em",
+                  color: "rgba(212,175,55,0.55)",
+                }}
+              >
+                COMMAND STATUS
+              </span>
+              <StatusPill
+                label={portalSignals.reachable ? "LIVE DATA ONLINE" : "PARTIAL DATA"}
+                color={portalSignals.reachable ? "#22C55E" : GOLD}
+              />
+            </div>
           </div>
         </div>
       </div>
 
       <div style={{ flex: 1, padding: "0 14px 18px", display: "grid", gap: 10, alignContent: "start" }}>
+        <div
+          style={{
+            alignItems: "center",
+            background: "rgba(255,255,255,0.018)",
+            border: "1px solid rgba(212,175,55,0.1)",
+            borderRadius: 8,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "8px 18px",
+            justifyContent: "space-between",
+            padding: "8px 12px",
+          }}
+        >
+          {[
+            { label: "Session Mode", value: sessionMode },
+            { label: "Real Role", value: formatLabel(realRole) },
+            { label: "Current Account", value: accountName },
+            { label: "Memberships", value: membershipSummary },
+          ].map((item) => (
+            <div key={item.label} style={{ display: "flex", gap: 7, alignItems: "center", minWidth: 0 }}>
+              <span style={{ color: MUTED, fontSize: 8.5, letterSpacing: "0.1em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                {item.label}
+              </span>
+              <span style={{ color: "rgba(226,232,240,0.82)", fontSize: 10.5, fontWeight: 650, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {item.value}
+              </span>
+            </div>
+          ))}
+        </div>
+
         <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: "0.13em", color: GOLD, textTransform: "uppercase" }}>
           Global Intelligence
         </div>
@@ -738,38 +741,51 @@ export default function DashboardPage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "10px 14px",
+                gap: 8,
               }}
             >
-              <MetricCell
-                label="PORTAL API"
-                value={portalSignals.reachable ? "REACHABLE" : "UNAVAILABLE"}
-                helper={`${portalSignals.online} / ${portalSignals.total} live modules responding`}
-                data={[0, 1, 2, portalSignals.online]}
-                color="#22C55E"
-              />
-              <MetricCell
-                label="LIVE DATA"
-                value={summary.error || metrics.error ? "PARTIAL" : "ONLINE"}
-                helper={summary.data?.lastSyncAt ? `Last sync ${formatRelativeTime(summary.data.lastSyncAt)}` : "Waiting for case sync data"}
-                data={[1, 2, 2, summary.data?.activeRecords ?? 0].map((v) => Number(v))}
-                color="#8B5CF6"
-              />
-              <MetricCell
-                label="SESSION"
-                value={me?.sessionMode === "dev_placeholder" ? "DEV MODE" : "ACTIVE"}
-                helper={accountName}
-                data={[1, 1, 2, me?.memberships?.length ?? 0]}
-                color="#3B82F6"
-              />
-              <MetricCell
-                label="ACCOUNT ROLE"
-                value={role ? role.replace("_", " ").toUpperCase() : "UNASSIGNED"}
-                helper={membershipSummary}
-                data={[1, 2, 1, isOperator ? 3 : 2]}
-                color="#F97316"
-              />
+              {[
+                {
+                  label: "Portal API",
+                  value: portalSignals.reachable ? "Reachable" : "Unavailable",
+                  color: portalSignals.reachable ? "#22C55E" : GOLD,
+                },
+                {
+                  label: "Live Data",
+                  value: summary.error || metrics.error ? "Partial" : "Online",
+                  color: summary.error || metrics.error ? GOLD : "#22C55E",
+                },
+                {
+                  label: "Modules Responding",
+                  value: `${portalSignals.online} / ${portalSignals.total}`,
+                  color: TEXT,
+                },
+                {
+                  label: "Last Sync",
+                  value: summary.data?.lastSyncAt ? formatRelativeTime(summary.data.lastSyncAt) : "Waiting",
+                  color: TEXT,
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    alignItems: "center",
+                    borderTop: "1px solid rgba(212,175,55,0.06)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    minHeight: 20,
+                    paddingTop: 6,
+                  }}
+                >
+                  <span style={{ color: MUTED, fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                    {item.label}
+                  </span>
+                  <span style={{ color: item.color, fontSize: 11, fontWeight: 800, textAlign: "right" }}>
+                    {item.value}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -845,38 +861,102 @@ export default function DashboardPage() {
             <SectionHead icon={ShieldAlert} title="Threat Matrix" action="VIEW MATRIX" href="/dashboard/threat-matrix" />
             <LoadingOrUnavailable loading={threats.loading} error={threats.error} />
             {!threats.loading && !threats.error && threats.data ? (
-              <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                <svg viewBox="0 0 96 96" width={90} height={90} style={{ flexShrink: 0 }}>
-                  {threatPaths.map((segment) => (
-                    <path key={segment.label} d={segment.path} fill={segment.color} stroke="#080a0e" strokeWidth="1.5" />
-                  ))}
-                  <text x="48" y="45" textAnchor="middle" fontSize="16" fontWeight="800" fill={TEXT}>
-                    {formatCount(threats.data.activeThreatFamilies)}
-                  </text>
-                  <text x="48" y="58" textAnchor="middle" fontSize="7.5" fill={MUTED} letterSpacing="0.1em">
-                    ACTIVE
-                  </text>
-                </svg>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    <span style={{ fontSize: 10.5, color: "#CBD5E1" }}>Critical exposure</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#EF4444" }}>{formatCount(threats.data.criticalExposure)}</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ fontSize: 8, color: MUTED, letterSpacing: "0.07em" }}>THREAT-FAMILY COMPOSITION</div>
+                <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                  <svg viewBox="0 0 96 96" width={112} height={112} style={{ flexShrink: 0 }}>
+                    {threatPaths.map((segment) => (
+                      <path key={segment.label} d={segment.path} fill={segment.color} stroke="#080a0e" strokeWidth="1.2" />
+                    ))}
+                    <text x="48" y="44" textAnchor="middle" fontSize="13" fontWeight="800" fill={TEXT}>
+                      {threatSegments[0]?.pct ?? 0}%
+                    </text>
+                    <text x="48" y="55" textAnchor="middle" fontSize="5.5" fill={MUTED} letterSpacing="0.1em">
+                      TOP FAMILY
+                    </text>
+                  </svg>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 7, flex: 1, minWidth: 0 }}>
+                    {threatSegments.slice(0, 3).map((seg) => (
+                      <div key={seg.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ width: 7, height: 7, borderRadius: "50%", background: seg.color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 10, color: "#CBD5E1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+                          {seg.label}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: TEXT, flexShrink: 0 }}>{seg.pct}%</span>
+                      </div>
+                    ))}
+                    {threatSegments.length > 3 && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ width: 7, height: 7, borderRadius: "50%", background: "rgba(100,116,139,0.55)", flexShrink: 0 }} />
+                        <span style={{ fontSize: 10, color: MUTED, flex: 1 }}>Other families</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: MUTED, flexShrink: 0 }}>
+                          {threatSegments.slice(3).reduce((s, seg) => s + seg.pct, 0)}%
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    <span style={{ fontSize: 10.5, color: "#CBD5E1" }}>Replay gaps</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: GOLD }}>{formatCount(threats.data.replayGaps)}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    <span style={{ fontSize: 10.5, color: "#CBD5E1" }}>Highest score</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: TEXT }}>{formatCount(threats.data.highestThreatScore)}</span>
-                  </div>
-                  <div style={{ fontSize: 9.5, color: MUTED, marginTop: 4 }}>
-                    {topThreatFamily ? `${topThreatFamily.threatFamily} currently leads the matrix.` : "No threat families available."}
-                  </div>
+                </div>
+                <div style={{ fontSize: 9.5, color: MUTED }}>
+                  {topThreatFamily
+                    ? `${topThreatFamily.threatFamily} leads at ${threatSegments[0]?.pct ?? 0}% of cases.`
+                    : "No threat families available."}
                 </div>
               </div>
             ) : null}
           </div>
+        </div>
+
+        <div style={CARD}>
+          <SectionHead icon={AlertTriangle} title="Incidents" action="OPEN INCIDENTS" href="/dashboard/incidents" />
+          <LoadingOrUnavailable loading={incidents.loading} error={incidents.error} />
+          {!incidents.loading && incidents.error ? (
+            <div style={{ fontSize: 10.5, color: MUTED }}>
+              Incidents overview unavailable.
+            </div>
+          ) : null}
+          {!incidents.loading && !incidents.error && incidentData ? (
+            <div style={{ display: "grid", gap: 8 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+                  gap: 8,
+                }}
+              >
+                {[
+                  { label: "TOTAL INCIDENTS", value: incidentData.total_incidents, color: TEXT },
+                  { label: "CRITICAL", value: incidentData.critical_incidents, color: "#EF4444" },
+                  { label: "AWAITING REPLAY", value: incidentData.incidents_awaiting_replay, color: GOLD },
+                  { label: "REPLAY VALIDATED", value: incidentData.replay_validated_incidents, color: "#22C55E" },
+                  { label: "RESPONSE COVERAGE", value: incidentData.incidents_with_response_coverage, color: "#3B82F6" },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      border: "1px solid rgba(212,175,55,0.1)",
+                      borderRadius: 6,
+                      padding: "7px 10px",
+                      background: "rgba(255,255,255,0.02)",
+                      minWidth: 0,
+                    }}
+                  >
+                    <div style={{ fontSize: 8, color: MUTED, letterSpacing: "0.07em" }}>{item.label}</div>
+                    <div style={{ marginTop: 4, fontSize: 15, fontWeight: 800, color: item.color, lineHeight: 1 }}>
+                      {formatCount(item.value)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 2 }}>
+                <span style={{ fontSize: 8.5, color: MUTED }}>
+                  Coverage Pending: <span style={{ color: "#F97316", fontWeight: 700 }}>{formatCount(incidentCoveragePending)}</span>
+                </span>
+                <Link href="/dashboard/incidents" style={{ fontSize: 8.5, color: "rgba(212,175,55,0.72)", letterSpacing: "0.08em", textDecoration: "none" }}>
+                  OPEN INCIDENTS →
+                </Link>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: "0.13em", color: GOLD, textTransform: "uppercase" }}>
@@ -886,315 +966,193 @@ export default function DashboardPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1.15fr 1fr",
+            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
             gap: 10,
             marginBottom: 10,
           }}
         >
-          <div style={CARD}>
+          <div style={{ ...CARD, padding: "10px 12px" }}>
             <SectionHead icon={FolderOpen} title="Critical Intelligence" action="VIEW LIBRARY" href="/dashboard/case-library" />
             <LoadingOrUnavailable
               loading={summary.loading || criticalIntel.loading}
               error={summary.error || criticalIntel.error}
             />
             {!summary.loading && !criticalIntel.loading && !summary.error && !criticalIntel.error ? (
-              <div style={{ display: "grid", gap: 12 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                  <div style={{ fontSize: 10, color: MUTED }}>
-                    Recent critical and high issues with replay-based defense readiness.
-                  </div>
-                  <div style={{ display: "inline-flex", gap: 6, padding: 3, borderRadius: 6, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)" }}>
-                    {(["24h", "7d", "30d"] as const).map((window) => {
-                      const active = criticalWindow === window;
-                      return (
-                        <button
-                          key={window}
-                          type="button"
-                          onClick={() => setCriticalWindow(window)}
-                          style={{
-                            border: "none",
-                            cursor: "pointer",
-                            borderRadius: 4,
-                            padding: "5px 9px",
-                            fontSize: 9,
-                            fontWeight: 700,
-                            letterSpacing: "0.08em",
-                            color: active ? "#080a0e" : "#CBD5E1",
-                            background: active ? GOLD : "transparent",
-                          }}
-                        >
-                          {window.toUpperCase()}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-                    gap: 10,
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: 8.5, color: MUTED, letterSpacing: "0.08em" }}>CRITICAL</div>
-                    <div style={{ marginTop: 4, fontSize: 18, fontWeight: 800, color: TEXT }}>
-                      {formatCount(criticalIntel.data?.criticalCount)}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 8.5, color: MUTED, letterSpacing: "0.08em" }}>HIGH</div>
-                    <div style={{ marginTop: 4, fontSize: 18, fontWeight: 800, color: "#F97316" }}>
-                      {formatCount(criticalIntel.data?.highCount)}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 8.5, color: MUTED, letterSpacing: "0.08em" }}>REPLAYABLE</div>
-                    <div style={{ marginTop: 4, fontSize: 18, fontWeight: 800, color: GOLD }}>
-                      {formatCount(criticalIntel.data?.replayableCount)}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 8.5, color: MUTED, letterSpacing: "0.08em" }}>DEFENDED %</div>
-                    <div style={{ marginTop: 4, fontSize: 18, fontWeight: 800, color: "#22C55E" }}>
-                      {formatPct(criticalIntel.data?.defenseReadinessPct)}
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gap: 12,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: 10,
-                      alignItems: "start",
-                    }}
-                  >
-                    <div
-                      style={{
-                        border: "1px solid rgba(212,175,55,0.1)",
-                        borderRadius: 8,
-                        padding: "10px 12px",
-                        background: "rgba(255,255,255,0.02)",
-                      }}
-                    >
-                      <div style={{ display: "grid", gap: 8 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                          <span style={{ fontSize: 9, color: MUTED, letterSpacing: "0.08em" }}>DEFENSE READINESS</span>
-                          <span style={{ fontSize: 11, color: "#22C55E", fontWeight: 700 }}>
-                            {formatPct(criticalIntel.data?.defenseReadinessPct)}
-                          </span>
-                        </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                          <span style={{ fontSize: 9, color: MUTED, letterSpacing: "0.08em" }}>CRITICAL REPLAY GAP</span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#EF4444" }}>
-                            {formatCount(criticalIntel.data?.criticalReplayMissing)}
-                          </span>
-                        </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                          <span style={{ fontSize: 9, color: MUTED, letterSpacing: "0.08em" }}>HIGH REPLAY GAP</span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#F97316" }}>
-                            {formatCount(criticalIntel.data?.highReplayMissing)}
-                          </span>
-                        </div>
-                      </div>
-                      <div style={{ marginTop: 8 }}>
-                        <Sparkline
-                          data={criticalSpark}
-                          color={GOLD}
-                          w={150}
-                          h={24}
-                        />
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        border: "1px solid rgba(212,175,55,0.1)",
-                        borderRadius: 8,
-                        padding: "10px 12px",
-                        background: "rgba(255,255,255,0.02)",
-                      }}
-                    >
-                      <div style={{ display: "grid", gap: 8 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                          <span style={{ fontSize: 9, color: MUTED, letterSpacing: "0.08em" }}>TOP THREAT FAMILY</span>
-                          <span style={{ fontSize: 10, color: "#CBD5E1", fontWeight: 600, textAlign: "right" }}>
-                            {criticalIntel.data?.topThreatFamily ?? "Unavailable"}
-                          </span>
-                        </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                          <span style={{ fontSize: 9, color: MUTED, letterSpacing: "0.08em" }}>LAST SYNC</span>
-                          <span style={{ fontSize: 10, color: "#CBD5E1", fontWeight: 600 }}>
-                            {formatRelativeTime(summary.data?.lastSyncAt)}
-                          </span>
-                        </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                          <span style={{ fontSize: 9, color: MUTED, letterSpacing: "0.08em" }}>SERIOUS CASES</span>
-                          <span style={{ fontSize: 10, color: TEXT, fontWeight: 700 }}>
-                            {formatCount(criticalIntel.data?.seriousTotal)}
-                          </span>
-                        </div>
-                        <div style={{ display: "grid", gap: 6, marginTop: 2 }}>
-                          <Link
-                            href="/dashboard/case-library"
-                            style={{ textDecoration: "none", fontSize: 9, color: "rgba(212,175,55,0.72)", letterSpacing: "0.08em" }}
-                          >
-                            VIEW SERIOUS CASES
-                          </Link>
-                          <Link
-                            href="/dashboard/threat-matrix"
-                            style={{ textDecoration: "none", fontSize: 9, color: "rgba(212,175,55,0.72)", letterSpacing: "0.08em" }}
-                          >
-                            OPEN THREAT MATRIX
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: "grid", gap: 8 }}>
-                    <div style={{ fontSize: 9, color: MUTED, letterSpacing: "0.08em" }}>LATEST SERIOUS ISSUES</div>
-                    {(criticalIntel.data?.latestSeriousCases?.length ?? 0) > 0 ? (
-                      <div
+              <div style={{ display: "grid", gap: 0 }}>
+                <div style={{ display: "inline-flex", gap: 3, padding: 2, borderRadius: 4, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(212,175,55,0.12)", marginBottom: 7, alignSelf: "start" }}>
+                  {(["24h", "7d", "30d"] as const).map((window) => {
+                    const active = criticalWindow === window;
+                    return (
+                      <button
+                        key={window}
+                        type="button"
+                        onClick={() => setCriticalWindow(window)}
                         style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 1fr",
-                          gap: 12,
-                          alignItems: "start",
+                          border: "none",
+                          cursor: "pointer",
+                          borderRadius: 3,
+                          padding: "3px 6px",
+                          fontSize: 8,
+                          fontWeight: 700,
+                          letterSpacing: "0.06em",
+                          color: active ? "#080a0e" : "#CBD5E1",
+                          background: active ? GOLD : "transparent",
                         }}
                       >
-                        {[...(criticalIntel.data?.latestSeriousCases ?? [])]
-                          .sort(compareSeriousCases)
-                          .slice(0, 4)
-                          .map((item) => {
-                          const status = defenseStatus(item);
-                          return (
-                            <div
-                              key={item.caseId}
-                              style={{
-                                display: "grid",
-                                gap: 7,
-                                padding: "10px 0",
-                                borderTop: "1px solid rgba(212,175,55,0.06)",
-                              }}
-                            >
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
-                                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                                  <StatusPill label={item.severity === "critical" ? "CRITICAL" : "HIGH"} color={item.severity === "critical" ? "#EF4444" : "#F97316"} />
-                                  <StatusPill label={status.label} color={status.color} />
-                                </div>
-                              </div>
-                              <div style={{ fontSize: 11, fontWeight: 600, color: TEXT, lineHeight: 1.35 }}>
-                                {item.title || item.caseId}
-                              </div>
-                              <div style={{ fontSize: 9.5, color: MUTED }}>
-                                {[item.source || "Unknown source", formatRelativeTime(caseTimestamp(item)), item.caseId].filter(Boolean).join(" | ")}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: 10.5, color: MUTED }}>
-                        No critical or high issues observed in this window.
-                      </div>
-                    )}
+                        {window.toUpperCase()}
+                      </button>
+                    );
+                  })}
+                </div>
+                {[
+                  { label: "CRITICAL", value: formatCount(criticalIntel.data?.criticalCount), color: "#EF4444" },
+                  { label: "HIGH", value: formatCount(criticalIntel.data?.highCount), color: "#F97316" },
+                  { label: "REPLAYABLE", value: formatCount(criticalIntel.data?.replayableCount), color: GOLD },
+                  { label: "REPLAY VALIDATED %", value: formatPct(criticalIntel.data?.defenseReadinessPct), color: "#22C55E" },
+                  { label: "TOP THREAT", value: criticalIntel.data?.topThreatFamily ?? "Unavailable", color: TEXT },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 8,
+                      alignItems: "center",
+                      borderTop: "1px solid rgba(212,175,55,0.06)",
+                      padding: "5px 0",
+                    }}
+                  >
+                    <span style={{ fontSize: 8.5, color: MUTED, letterSpacing: "0.07em", flexShrink: 0 }}>{item.label}</span>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: item.color, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "55%" }}>{item.value}</span>
                   </div>
+                ))}
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingTop: 7, borderTop: "1px solid rgba(212,175,55,0.06)", marginTop: 2 }}>
+                  <Link href="/dashboard/case-library" style={{ textDecoration: "none", fontSize: 8.5, color: "rgba(212,175,55,0.72)", letterSpacing: "0.07em" }}>
+                    VIEW SERIOUS CASES →
+                  </Link>
+                  <Link href="/dashboard/threat-matrix" style={{ textDecoration: "none", fontSize: 8.5, color: "rgba(212,175,55,0.72)", letterSpacing: "0.07em" }}>
+                    OPEN THREAT MATRIX →
+                  </Link>
                 </div>
               </div>
             ) : null}
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div style={CARD}>
-                <SectionHead icon={Activity} title="Bridge Monitor" />
-                <StatusPill label="PENDING PROJECT MAP" color={GOLD} />
-                <div style={{ marginTop: 10, fontSize: 18, fontWeight: 800, color: TEXT, lineHeight: 1 }}>
-                  Not configured
+          <div style={{ ...CARD, padding: "10px 12px" }}>
+            <SectionHead icon={Building2} title="Project Map" action="OPEN MAP" href="/dashboard/project-map" />
+            <LoadingOrUnavailable loading={projectOverview.loading} error={projectOverview.error} />
+            {!projectOverview.loading && !projectOverview.error ? (
+              <div style={{ display: "grid", gap: 0 }}>
+                <div style={{ marginBottom: 7 }}>
+                  <StatusPill label={hasProjects ? "ACCOUNT MAPPED" : "NOT CONFIGURED"} color={hasProjects ? "#22C55E" : GOLD} />
                 </div>
-                <div style={{ fontSize: 9.5, color: MUTED, marginTop: 4 }}>
-                  Bridge monitoring will activate after account route mapping exists.
-                </div>
+                {[
+                  { label: "PROJECTS", value: formatCount(projectData?.projectCount), color: TEXT },
+                  { label: "ASSETS", value: formatCount(projectData?.assetCount), color: TEXT },
+                  { label: "LAST SCAN", value: formatRelativeTime(projectData?.lastScanAt), color: TEXT },
+                  { label: "OPEN FINDINGS", value: formatCount(projectData?.openFindingCount), color: toneForSeverity(projectData?.highestSeverity ?? undefined) },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 8,
+                      alignItems: "center",
+                      borderTop: "1px solid rgba(212,175,55,0.06)",
+                      padding: "5px 0",
+                    }}
+                  >
+                    <span style={{ fontSize: 8.5, color: MUTED, letterSpacing: "0.07em" }}>{item.label}</span>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: item.color }}>{item.value}</span>
+                  </div>
+                ))}
               </div>
+            ) : null}
+          </div>
 
-              <div style={CARD}>
-                <SectionHead icon={Eye} title="Oracle Monitor" />
-                <StatusPill label="PENDING PROJECT MAP" color={GOLD} />
-                <div style={{ marginTop: 10, fontSize: 18, fontWeight: 800, color: TEXT, lineHeight: 1 }}>
-                  Not configured
+          <div style={{ ...CARD, padding: "10px 12px" }}>
+            <SectionHead icon={ShieldAlert} title="Authority Risk" action="VIEW FINDINGS" href="/dashboard/project-map" />
+            <LoadingOrUnavailable loading={projectOverview.loading} error={projectOverview.error} />
+            {!projectOverview.loading && !projectOverview.error ? (
+              <div style={{ display: "grid", gap: 0 }}>
+                <div style={{ marginBottom: 7 }}>
+                  <StatusPill label={projectData?.zeroCustodyStatus ? "READ-ONLY ANALYSIS" : "ZERO-CUSTODY UNKNOWN"} color={GOLD} />
                 </div>
-                <div style={{ fontSize: 9.5, color: MUTED, marginTop: 4 }}>
-                  Oracle monitoring depends on project feed configuration.
-                </div>
+                {[
+                  { label: "CRITICAL", value: formatCount(projectData?.criticalFindingCount), color: "#EF4444" },
+                  { label: "HIGH", value: formatCount(projectData?.highFindingCount), color: "#F97316" },
+                  { label: "HIGHEST-RISK ASSET", value: projectData?.highestRiskAssetName ?? projectData?.highestRiskProjectName ?? "Unavailable", color: TEXT },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 8,
+                      alignItems: "center",
+                      borderTop: "1px solid rgba(212,175,55,0.06)",
+                      padding: "5px 0",
+                    }}
+                  >
+                    <span style={{ fontSize: 8.5, color: MUTED, letterSpacing: "0.07em", flexShrink: 0 }}>{item.label}</span>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: item.color, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "55%" }}>{item.value}</span>
+                  </div>
+                ))}
+                {topFindingTypes.length > 0 ? (
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", paddingTop: 6 }}>
+                    {topFindingTypes.map(([type, count]) => (
+                      <span
+                        key={type}
+                        style={{
+                          fontSize: 8,
+                          color: "#F5E7A1",
+                          border: "1px solid rgba(212,175,55,0.18)",
+                          borderRadius: 3,
+                          padding: "2px 5px",
+                          background: "rgba(212,175,55,0.06)",
+                        }}
+                      >
+                        {formatFindingType(type)} {count}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-            </div>
+            ) : null}
+          </div>
 
-            <div style={CARD}>
-              <SectionHead icon={Cpu} title="Execution Adapters" action="ACCOUNT OPS" href="/dashboard/adapters" />
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                  gap: 10,
-                }}
-              >
+          <div style={{ ...CARD, padding: "10px 12px" }}>
+            <SectionHead icon={Cpu} title="Execution Adapters" action="ACCOUNT OPS" href="/dashboard/adapters" />
+            <div style={{ display: "grid", gap: 0 }}>
+              {[
+                { label: "ACCOUNT", value: accountName },
+                { label: "ADAPTER STATUS", value: "Pending account configuration" },
+                {
+                  label: "PROJECT MAP",
+                  value: projectOverview.loading
+                    ? "Loading..."
+                    : hasProjects
+                      ? `${formatCount(projectData?.projectCount)} projects mapped`
+                      : "Not configured",
+                },
+                { label: "REPORTS / AUDIT", value: "No audit records yet" },
+              ].map((item) => (
                 <div
+                  key={item.label}
                   style={{
-                    borderRadius: 8,
-                    padding: "10px 12px",
-                    background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(212,175,55,0.08)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    alignItems: "flex-start",
+                    borderTop: "1px solid rgba(212,175,55,0.06)",
+                    padding: "5px 0",
                   }}
                 >
-                  <div style={{ fontSize: 9, color: MUTED, letterSpacing: "0.08em" }}>ACCOUNT</div>
-                  <div style={{ marginTop: 5, fontSize: 13, color: TEXT, fontWeight: 700 }}>{accountName}</div>
-                  <div style={{ marginTop: 3, fontSize: 10, color: MUTED }}>{role ?? "No role"}</div>
+                  <span style={{ fontSize: 8.5, color: MUTED, letterSpacing: "0.07em", flexShrink: 0 }}>{item.label}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: TEXT, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "58%" }}>{item.value}</span>
                 </div>
-                <div
-                  style={{
-                    borderRadius: 8,
-                    padding: "10px 12px",
-                    background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(212,175,55,0.08)",
-                  }}
-                >
-                  <div style={{ fontSize: 9, color: MUTED, letterSpacing: "0.08em" }}>ADAPTER STATUS</div>
-                  <div style={{ marginTop: 5, fontSize: 13, color: TEXT, fontWeight: 700 }}>Pending account configuration</div>
-                  <div style={{ marginTop: 3, fontSize: 10, color: MUTED }}>No live adapter health endpoint yet</div>
-                </div>
-                <div
-                  style={{
-                    borderRadius: 8,
-                    padding: "10px 12px",
-                    background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(212,175,55,0.08)",
-                  }}
-                >
-                  <div style={{ fontSize: 9, color: MUTED, letterSpacing: "0.08em" }}>PROJECT MAP</div>
-                  <div style={{ marginTop: 5, fontSize: 13, color: TEXT, fontWeight: 700 }}>Not configured</div>
-                  <div style={{ marginTop: 3, fontSize: 10, color: MUTED }}>Pending account surface definition</div>
-                </div>
-                <div
-                  style={{
-                    borderRadius: 8,
-                    padding: "10px 12px",
-                    background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(212,175,55,0.08)",
-                  }}
-                >
-                  <div style={{ fontSize: 9, color: MUTED, letterSpacing: "0.08em" }}>REPORTS / AUDIT</div>
-                  <div style={{ marginTop: 5, fontSize: 13, color: TEXT, fontWeight: 700 }}>No account audit records yet</div>
-                  <div style={{ marginTop: 3, fontSize: 10, color: MUTED }}>No reports generated yet</div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
