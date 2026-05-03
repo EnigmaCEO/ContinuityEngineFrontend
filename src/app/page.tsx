@@ -2,6 +2,7 @@ import type React from "react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import NavBar from "./NavBar";
 
 export const metadata: Metadata = {
   title: "Sagitta Continuity Engine — Web3 Protocol Continuity Intelligence",
@@ -30,12 +31,6 @@ const PURPLE_GRADIENT_TEXT: React.CSSProperties = {
 };
 const BORDER = "rgba(212,175,55,0.14)";
 
-const NAV_LINKS = [
-  { label: "Overview", href: "#overview", active: true },
-  { label: "Continuity Mandate", href: "#continuity-mandate", active: false },
-  { label: "How SCE Works", href: "#how-sce-works", active: false },
-  { label: "Defense Review", href: "#first-service-door", active: false },
-];
 
 const INCIDENTS = [
   "HoneySwap.Fi rugpull — $3.3M lost",
@@ -118,65 +113,7 @@ export default function HomePage() {
   return (
     <div style={{ background: BG, color: TEXT, minHeight: "100vh", fontFamily: "var(--font-geist-sans), Arial, sans-serif" }}>
 
-      {/* NAV */}
-      <nav className="nav-bar" style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
-        background: "rgba(8,10,14,0.96)",
-        backdropFilter: "blur(16px)",
-        padding: "0 40px",
-        display: "grid",
-        gridTemplateColumns: "1fr auto 1fr",
-        alignItems: "center",
-        height: 96,
-      }}>
-        {/* Wordmark — left column */}
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="nav-logo-img" src="/logo.png" alt="Sagitta Continuity Engine" style={{ height: 150, width: "auto", display: "block" }} />
-          <div className="nav-wordmark-text" style={{ lineHeight: 1, top: -20, position: "relative" }}>
-            <div className="nav-wordmark-name" style={{ fontSize: 36, fontWeight: 500, letterSpacing: "0.07em", color: TEXT }}>SAGITTA</div>
-            <div className="nav-wordmark-sub" style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.22em", color: PURPLE, marginTop: 5 }}>CONTINUITY ENGINE</div>
-          </div>
-        </div>
-        {/* Nav links — true center column */}
-        <div className="nav-links" style={{ display: "flex", alignItems: "center" }}>
-          {NAV_LINKS.map((l) => (
-            <a key={l.label} href={l.href} style={{
-              padding: "6px 14px",
-              color: l.active ? TEXT : TEXT_MUTED,
-              textDecoration: "none",
-              fontSize: 13,
-              fontWeight: l.active ? 600 : 400,
-              borderBottom: l.active ? `2px solid ${PURPLE}` : "2px solid transparent",
-              whiteSpace: "nowrap",
-            }}>{l.label}</a>
-          ))}
-        </div>
-        {/* Portal Login — right column, end-aligned */}
-        <div className="nav-portal-wrapper" style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Link href="/login" style={{
-            padding: "8px 18px",
-            borderRadius: 8,
-            border: `1px solid rgba(139,92,246,0.7)`,
-            background: "rgba(139,92,246,0.1)",
-            color: PURPLE,
-            textDecoration: "none",
-            fontSize: 13,
-            fontWeight: 600,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-            Portal Login
-          </Link>
-        </div>
-      </nav>
+      <NavBar />
 
       {/* HERO */}
       <section id="overview" className="hero-section" style={{
@@ -193,7 +130,7 @@ export default function HomePage() {
         <div className="hero-illustration" style={{
           position: "absolute",
           right: 0,
-          width: "80%",
+          width: "70%",
           zIndex: 0,
           pointerEvents: "none",
         }}>
@@ -404,9 +341,9 @@ export default function HomePage() {
       }}>
 
         {/* Illustration — absolute right bleed, same pattern as hero */}
-        <div style={{
+        <div className="mandate-illustration" style={{
           position: "absolute",
-          right: 100,
+          right: 50,
           top: 0,
           bottom: 0,
           width: "50%",
@@ -445,7 +382,7 @@ export default function HomePage() {
         </div>
 
         {/* Copy — above illustration layer */}
-        <div style={{
+        <div className="mandate-copy" style={{
           position: "relative",
           zIndex: 1,
           width: "100%",
@@ -486,7 +423,7 @@ export default function HomePage() {
           </p>
 
           {/* Feature cards 2×2 */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 28 }}>
+          <div className="mandate-cards" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 28 }}>
             {[
               {
                 icon: (
@@ -599,9 +536,9 @@ export default function HomePage() {
         borderBottom: `1px solid ${PURPLE_FAINT}`,
       }}>
         {/* Illustration — absolute right bleed */}
-        <div style={{
+        <div className="sce-works-illustration" style={{
           position: "absolute",
-          right: 100,
+          right: 50,
           top: -50,
           bottom: 0,
           width: "52%",
@@ -640,7 +577,7 @@ export default function HomePage() {
         </div>
 
         {/* Copy */}
-        <div style={{
+        <div className="sce-works-copy" style={{
           position: "relative",
           zIndex: 1,
           paddingTop: 96,
@@ -826,13 +763,13 @@ export default function HomePage() {
         borderBottom: `1px solid ${PURPLE_FAINT}`,
         overflow: "hidden",
       }}>
-        <div style={{
+        <div className="fsd-grid" style={{
           display: "grid",
           gridTemplateColumns: "minmax(0, 5fr) minmax(0, 7fr)",
           minHeight: 720,
         }}>
           {/* Left: copy + illustration */}
-          <div style={{
+          <div className="fsd-left" style={{
             display: "flex",
             flexDirection: "column",
             paddingTop: 72,
@@ -906,38 +843,24 @@ export default function HomePage() {
               <Image
                 src="/section4-illustration.png"
                 alt=""
-                width={800}
-                height={600}
+                width={900}
+                height={507}
                 style={{
-                  width: "110%",
+                  width: "100%",
                   height: "auto",
                   display: "block",
                   position: "absolute",
                   bottom: 0,
                   left: -20,
+                  zIndex: 2,
                 }}
               />
-              {/* Top fade */}
-              <div style={{
-                position: "absolute",
-                left: 0, right: 0, top: 0,
-                height: "30%",
-                background: `linear-gradient(to bottom, ${BG} 0%, transparent 100%)`,
-                zIndex: 1,
-              }} />
-              {/* Right fade */}
-              <div style={{
-                position: "absolute",
-                top: 0, bottom: 0, right: 0,
-                width: "25%",
-                background: `linear-gradient(to left, ${BG} 0%, transparent 100%)`,
-                zIndex: 1,
-              }} />
+              
             </div>
           </div>
 
           {/* Right: cards + CTAs */}
-          <div style={{
+          <div className="fsd-right" style={{
             padding: "72px 40px 48px max(32px, 3vw)",
             display: "flex",
             flexDirection: "column",
@@ -945,24 +868,51 @@ export default function HomePage() {
             gap: 32,
           }}>
             {/* 3 cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, paddingTop: 120 }}>
+            <div className="fsd-cards" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, paddingTop: 120 }}>
 
               {/* Pricing card */}
               <div style={{
-                background: "linear-gradient(135deg, rgba(139,92,246,0.75) 0%, rgba(100,60,200,0.4) 40%, rgba(60,20,120,0.15) 100%)",
-                borderRadius: 17,
-                padding: 1,
+                background: "linear-gradient(135deg, rgba(167,139,250,0.95) 0%, rgba(139,92,246,0.7) 35%, rgba(88,28,135,0.4) 70%, rgba(40,10,80,0.2) 100%)",
+                borderRadius: 20,
+                padding: 1.5,
+                boxShadow: "0 0 0 1px rgba(167,139,250,0.1), 0 8px 32px rgba(139,92,246,0.35), 0 0 80px rgba(139,92,246,0.18)",
+                transform: "scale(1.03)",
+                transformOrigin: "center top",
+                zIndex: 1,
+                position: "relative",
               }}>
               <div style={{
-                borderRadius: 16,
-                padding: "24px 20px",
-                background: "#000",
+                borderRadius: 19,
+                padding: "28px 22px",
+                background: "linear-gradient(160deg, #0d0a1a 0%, #07050f 60%, #000 100%)",
                 display: "flex",
                 flexDirection: "column",
                 position: "relative",
                 height: "100%",
                 boxSizing: "border-box" as const,
+                overflow: "hidden",
               }}>
+                {/* Top purple glow accent */}
+                <div style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 2,
+                  background: "linear-gradient(90deg, transparent 0%, rgba(167,139,250,0.9) 30%, rgba(139,92,246,1) 60%, transparent 100%)",
+                  borderRadius: "19px 19px 0 0",
+                }} />
+                {/* Inner ambient glow */}
+                <div style={{
+                  position: "absolute",
+                  top: -60,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: 200,
+                  height: 120,
+                  background: "radial-gradient(ellipse, rgba(139,92,246,0.22) 0%, transparent 70%)",
+                  pointerEvents: "none",
+                }} />
                 {/* Shield icon top-right */}
                 <div style={{
                   position: "absolute",
@@ -1203,27 +1153,178 @@ export default function HomePage() {
       </section>
 
       {/* FOOTER */}
-      <footer style={{
-        borderTop: `1px solid ${BORDER}`,
-        padding: "28px 24px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
-        gap: 12,
-      }}>
-        <div style={{ display: "flex", alignItems: "center" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon.png" alt="Sagitta Continuity Engine" style={{ height: 26, width: "auto", display: "block" }} />
+      <footer style={{ borderTop: `1px solid ${BORDER}`, background: BG }}>
+
+        {/* Main footer grid */}
+        <div className="footer-grid" style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
+          gap: "40px 32px",
+          padding: "64px max(40px, 5vw) 48px",
+          borderBottom: `1px solid ${BORDER}`,
+        }}>
+
+          {/* Brand column */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icon.png" alt="" style={{ height: 56, width: "auto", display: "block" }} />
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: "-0.01em", color: TEXT }}>SAGITTA</div>
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.2em", color: PURPLE, textTransform: "uppercase" as const }}>Continuity Engine</div>
+              </div>
+            </div>
+            <p style={{ fontSize: 13, color: TEXT_MUTED, lineHeight: 1.7, marginBottom: 20, maxWidth: 280 }}>
+              Survival infrastructure for protocols when normal assumptions fail.
+            </p>
+            <div style={{ width: 200, height: 2, background: `linear-gradient(90deg, ${PURPLE}, transparent)`, borderRadius: 2, marginBottom: 20 }} />
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={PURPLE_DIM} strokeWidth="1.8" style={{ flexShrink: 0, marginTop: 1 }}>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              <span style={{ fontSize: 12, color: TEXT_FAINT, lineHeight: 1.65 }}>
+                Zero-custody. Public-surface only.<br />No keys. No signing authority.
+              </span>
+            </div>
+          </div>
+
+          {/* Platform column */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: PURPLE, textTransform: "uppercase" as const, marginBottom: 20 }}>
+              Platform
+            </div>
+            <div style={{ display: "grid", gap: 13 }}>
+              {[
+                { label: "Overview", href: "#overview" },
+                { label: "Continuity Mandate", href: "#continuity-mandate" },
+                { label: "How SCE Works", href: "#how-sce-works" },
+                { label: "Defense Review", href: "#first-service-door" },
+              ].map(({ label, href }) => (
+                <a key={label} href={href} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: TEXT_MUTED, textDecoration: "none" }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                  {label}
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Resources column */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: PURPLE, textTransform: "uppercase" as const, marginBottom: 20 }}>
+              Resources
+            </div>
+            <div style={{ display: "grid", gap: 13 }}>
+              {[
+                { label: "Resource Hub", href: "/resources" },
+                { label: "Guides & Playbooks", href: "/resources" },
+                { label: "Incident Readiness", href: "/resources" },
+                { label: "Research & Updates", href: "/resources" },
+              ].map(({ label, href }) => (
+                <a key={label} href={href} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: TEXT_MUTED, textDecoration: "none" }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                  {label}
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Access column */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: PURPLE, textTransform: "uppercase" as const, marginBottom: 20 }}>
+              Access
+            </div>
+            <div style={{ display: "grid", gap: 13 }}>
+              {[
+                { label: "Portal Login", href: "/login", internal: true },
+                { label: "Request Defense Review", href: "mailto:hello@sagitta.systems?subject=SCE%20Defense%20Review%20Request", internal: false },
+                { label: "Request Access", href: "/request-access", internal: true },
+                { label: "Contact", href: "mailto:hello@sagitta.systems", internal: false },
+              ].map(({ label, href, internal }) =>
+                internal ? (
+                  <Link key={label} href={href} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: TEXT_MUTED, textDecoration: "none" }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                      <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                    {label}
+                  </Link>
+                ) : (
+                  <a key={label} href={href} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: TEXT_MUTED, textDecoration: "none" }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                      <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                    {label}
+                  </a>
+                )
+              )}
+            </div>
+          </div>
+
+          {/* Built For column */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: PURPLE, textTransform: "uppercase" as const, marginBottom: 20 }}>
+              Built For
+            </div>
+            <div style={{ display: "grid", gap: 13 }}>
+              {[
+                {
+                  label: "Protocol Teams",
+                  icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.6"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+                },
+                {
+                  label: "DAOs",
+                  icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.6"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+                },
+                {
+                  label: "DeFi Systems",
+                  icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.6"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
+                },
+                {
+                  label: "Treasury-heavy Projects",
+                  icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.6"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>,
+                },
+                {
+                  label: "Infrastructure Teams",
+                  icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.6"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>,
+                },
+              ].map(({ label, icon }) => (
+                <div key={label} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: TEXT_MUTED }}>
+                  <span style={{ flexShrink: 0 }}>{icon}</span>
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
-          <Link href="/login" style={{ fontSize: 12, color: TEXT_FAINT, textDecoration: "none" }}>Portal Login</Link>
-          <Link href="/request-access" style={{ fontSize: 12, color: TEXT_FAINT, textDecoration: "none" }}>Request Access</Link>
-          <a href="mailto:hello@sagitta.systems" style={{ fontSize: 12, color: TEXT_FAINT, textDecoration: "none" }}>Contact</a>
+
+        {/* Bottom bar */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "18px max(40px, 5vw)",
+          flexWrap: "wrap",
+          gap: 12,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon.png" alt="" style={{ height: 22, width: "auto", display: "block", opacity: 0.7 }} />
+            <span style={{ fontSize: 12, color: TEXT_FAINT }}>
+              © {new Date().getFullYear()} Sagitta. Public-surface continuity intelligence.
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 12, color: TEXT_FAINT }}>
+            <Link href="/privacy" style={{ color: TEXT_FAINT, textDecoration: "none" }}>Privacy</Link>
+            <span style={{ color: PURPLE_DIM }}>•</span>
+            <Link href="/terms" style={{ color: TEXT_FAINT, textDecoration: "none" }}>Terms</Link>
+            <span style={{ color: PURPLE_DIM }}>•</span>
+            <Link href="/status" style={{ color: TEXT_FAINT, textDecoration: "none" }}>Status</Link>
+          </div>
         </div>
-        <div style={{ fontSize: 11, color: TEXT_FAINT }}>
-          © {new Date().getFullYear()} Sagitta. Zero-custody. Public-surface only.
-        </div>
+
       </footer>
     </div>
   );

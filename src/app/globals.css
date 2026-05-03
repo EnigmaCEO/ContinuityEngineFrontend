@@ -96,6 +96,11 @@ body {
     display: none !important;
   }
 
+  /* Neutralise the desktop-only negative top offset on portal login */
+  .nav-portal-wrapper {
+    margin-top: 0 !important;
+  }
+
   /* Scale logo image down to fit mobile nav */
   .nav-logo-img {
     height: 100px !important;
@@ -199,6 +204,137 @@ body {
     overflow: hidden !important;
   }
   .ticker-arrow {
+    display: none !important;
+  }
+}
+
+/* ── First Service Door — iPad Pro (≤1280px) ─────────────────────────────── */
+@media (max-width: 1280px) {
+  /* Shift weight to the right (cards) column */
+  .fsd-grid {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr) !important;
+  }
+  .fsd-cards {
+    padding-top: 60px !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  /* Stack: copy on top, cards below */
+  .fsd-grid {
+    grid-template-columns: 1fr !important;
+    min-height: unset !important;
+  }
+  .fsd-left {
+    padding-bottom: 0 !important;
+    /* Hide illustration at this breakpoint — keeps it clean */
+  }
+  .fsd-left > div:last-child {
+    /* illustration container */
+    display: none !important;
+  }
+  .fsd-right {
+    padding-top: 40px !important;
+    padding-left: max(40px, 5vw) !important;
+  }
+  .fsd-cards {
+    padding-top: 0 !important;
+  }
+}
+
+@media (max-width: 900px) {
+  /* Collapse 3 cards to 1-column */
+  .fsd-cards {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Continuity Mandate & How SCE Works — iPad Pro (≤1200px) ─────────────── */
+@media (max-width: 1200px) {
+  /* Shrink illustration, push left-edge fade further in */
+  .mandate-illustration {
+    width: 42% !important;
+    right: 40px !important;
+  }
+  .mandate-illustration > div:first-of-type {
+    /* Strengthen the left fade so text stays readable */
+    background: linear-gradient(90deg, #000 0%, rgba(0,0,0,0.95) 15%, rgba(0,0,0,0.55) 40%, transparent 65%) !important;
+  }
+  /* Tighten copy to leave a clean text column */
+  .mandate-copy {
+    max-width: 600px !important;
+    padding-right: 24px !important;
+  }
+
+  .sce-works-illustration {
+    width: 44% !important;
+    right: 40px !important;
+  }
+  .sce-works-copy {
+    max-width: 560px !important;
+    padding-right: 24px !important;
+  }
+}
+
+/* ── iPad Pro portrait (≤1100px) ─────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  /* Hide illustration entirely — copy becomes full-width */
+  .mandate-illustration,
+  .sce-works-illustration {
+    display: none !important;
+  }
+
+  .mandate-copy {
+    max-width: 100% !important;
+    padding-right: max(40px, 5vw) !important;
+  }
+
+  /* Drop 2-column cards to single column */
+  .mandate-cards {
+    grid-template-columns: 1fr 1fr !important;
+    max-width: 640px;
+  }
+
+  .sce-works-copy {
+    max-width: 100% !important;
+    padding-right: max(40px, 5vw) !important;
+  }
+}
+
+/* ── Small tablets / large phones (≤700px) ───────────────────────────────── */
+@media (max-width: 700px) {
+  .mandate-cards {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Footer responsive ────────────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .footer-grid {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) !important;
+  }
+  /* Merge last two columns — hide Built For on medium screens */
+  .footer-grid > div:last-child {
+    display: none !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .footer-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  /* Show brand column full-width */
+  .footer-grid > div:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 600px) {
+  .footer-grid {
+    grid-template-columns: 1fr !important;
+    padding: 40px max(24px, 5vw) 32px !important;
+  }
+  .footer-grid > div:last-child {
     display: none !important;
   }
 }
