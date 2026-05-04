@@ -15,7 +15,7 @@ import type {
   ScanAdminSurfaceResponse,
 } from "./types";
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 const SESSION_STORAGE_KEY = "sce_session_token";
 let projectDashboardFetchCount = 0;
 

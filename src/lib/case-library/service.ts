@@ -20,7 +20,7 @@ import { applyTableParams } from './selectors';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000';
 
 // Set to true to use local mock data instead of the real backend.
 const USE_MOCK = false;
