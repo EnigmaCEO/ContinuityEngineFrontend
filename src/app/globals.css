@@ -308,6 +308,13 @@ body {
   }
 }
 
+/* ── Pre-footer CTA banner ───────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .cta-divider {
+    display: none !important;
+  }
+}
+
 /* ── Footer responsive ────────────────────────────────────────────────────── */
 @media (max-width: 1200px) {
   .footer-grid {

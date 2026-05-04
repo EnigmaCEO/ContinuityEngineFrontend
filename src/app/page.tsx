@@ -1152,6 +1152,87 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* PRE-FOOTER CTA BANNER */}
+      <section style={{ padding: "40px max(40px, 5vw)", background: BG, borderTop: `1px solid ${BORDER}` }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 32,
+          padding: "28px 36px",
+          borderRadius: 16,
+          border: `1px solid ${PURPLE_FAINT}`,
+          background: "linear-gradient(135deg, rgba(139,92,246,0.09) 0%, rgba(139,92,246,0.04) 60%, rgba(8,10,14,0) 100%)",
+          boxShadow: `0 0 0 1px rgba(139,92,246,0.08) inset`,
+          flexWrap: "wrap",
+        }}>
+          {/* Shield icon */}
+          <div style={{
+            width: 64,
+            height: 64,
+            flexShrink: 0,
+            position: "relative",
+            filter: "drop-shadow(0 0 14px rgba(139,92,246,0.6))",
+          }}>
+            <svg width="64" height="64" viewBox="0 0 64 64" fill="none" style={{ position: "absolute", inset: 0 }}>
+              <path d="M32 4 L56 16 L56 48 L32 60 L8 48 L8 16 Z" fill="rgba(139,92,246,0.13)" stroke="rgba(139,92,246,0.55)" strokeWidth="1.2"/>
+            </svg>
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <polyline points="9 12 11 14 15 10"/>
+              </svg>
+            </div>
+          </div>
+
+          {/* Headline */}
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <p style={{ margin: 0, fontSize: "clamp(16px, 1.8vw, 22px)", fontWeight: 800, lineHeight: 1.3, color: TEXT }}>
+              Do not wait for your incident<br />
+              to reveal your{" "}
+              <span style={PURPLE_GRADIENT_TEXT}>control gaps.</span>
+            </p>
+          </div>
+
+          {/* Divider */}
+          <div style={{ width: 1, alignSelf: "stretch", background: `rgba(139,92,246,0.25)`, flexShrink: 0 }} className="cta-divider" />
+
+          {/* Buttons */}
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", flexShrink: 0 }}>
+            <a href="mailto:hello@sagitta.systems?subject=SCE%20Defense%20Review%20Request" style={{
+              padding: "13px 22px",
+              borderRadius: 10,
+              background: "#D4AF37",
+              color: "#111827",
+              textDecoration: "none",
+              fontWeight: 800,
+              fontSize: 14,
+              whiteSpace: "nowrap",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}>
+              Request Defense Review &nbsp;→
+            </a>
+            <Link href="/login" style={{
+              padding: "13px 22px",
+              borderRadius: 10,
+              border: `1px solid ${PURPLE_FAINT}`,
+              background: "rgba(139,92,246,0.08)",
+              color: PURPLE,
+              textDecoration: "none",
+              fontWeight: 700,
+              fontSize: 14,
+              whiteSpace: "nowrap",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}>
+              Enter Portal &nbsp;→
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* FOOTER */}
       <footer style={{ borderTop: `1px solid ${BORDER}`, background: BG }}>
 
