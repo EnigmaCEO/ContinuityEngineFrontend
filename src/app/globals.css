@@ -308,6 +308,50 @@ body {
   }
 }
 
+/* ── Ecosystem Coverage ──────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .ecosystem-cards {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1200px) {
+  .ecosystem-cards {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* ── Sample Defense Review ───────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .sample-defense-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Why SCE vs. an Audit ────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .audit-comparison-row {
+    flex-direction: column !important;
+  }
+  .audit-vs-divider {
+    flex-direction: row !important;
+    padding: 0 !important;
+    gap: 10px !important;
+    min-height: 48px !important;
+    width: 100%;
+  }
+  .audit-vs-line {
+    flex: 1 !important;
+    width: auto !important;
+    height: 1px !important;
+    min-height: unset !important;
+    background: linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.18) 100%) !important;
+  }
+  .audit-vs-line-end {
+    background: linear-gradient(90deg, rgba(139,92,246,0.18) 0%, transparent 100%) !important;
+  }
+}
+
 /* ── Pre-footer CTA banner ───────────────────────────────────────────────── */
 @media (max-width: 700px) {
   .cta-divider {
@@ -343,6 +387,12 @@ body {
   }
   .footer-grid > div:last-child {
     display: none !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .faq-grid {
+    grid-template-columns: 1fr !important;
   }
 }
 

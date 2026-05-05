@@ -8,10 +8,13 @@ const TEXT = "#E2E8F0";
 const TEXT_MUTED = "rgba(203,213,225,0.72)";
 
 const NAV_LINKS = [
-  { label: "Overview",            href: "#overview",           id: "overview" },
-  { label: "Continuity Mandate",  href: "#continuity-mandate", id: "continuity-mandate" },
-  { label: "How SCE Works",       href: "#how-sce-works",      id: "how-sce-works" },
-  { label: "Defense Review",      href: "#first-service-door", id: "first-service-door" },
+  { label: "Overview",        href: "#overview",                id: "overview" },
+  { label: "Mandate",         href: "#continuity-mandate",      id: "continuity-mandate" },
+  { label: "vs. Audit",       href: "#why-sce-vs-audit",        id: "why-sce-vs-audit" },
+  { label: "How It Works",    href: "#how-sce-works",           id: "how-sce-works" },
+  { label: "Ecosystem",       href: "#ecosystem-coverage",      id: "ecosystem-coverage" },
+  { label: "Sample Review",   href: "#sample-defense-review",   id: "sample-defense-review" },
+  { label: "Defense Review",  href: "#first-service-door",      id: "first-service-door" },
 ];
 
 const SECTION_IDS = NAV_LINKS.map((l) => l.id);
@@ -21,13 +24,15 @@ export default function NavBar() {
 
   useEffect(() => {
     const onScroll = () => {
-      // Walk sections top-to-bottom; the last one whose top is at or above
-      // the midpoint of the viewport (accounting for nav) wins.
-      const mid = window.scrollY + window.innerHeight * 0.35;
+      // A section becomes active the moment its top edge scrolls past the
+      // bottom of the sticky nav (96px). Using a tight threshold prevents the
+      // next section — which may already be visible lower in the viewport —
+      // from stealing the active state prematurely.
+      const threshold = 96 + 24;
       let current = SECTION_IDS[0];
       for (const id of SECTION_IDS) {
         const el = document.getElementById(id);
-        if (el && el.offsetTop <= mid) current = id;
+        if (el && el.getBoundingClientRect().top <= threshold) current = id;
       }
       setActiveId(current);
     };

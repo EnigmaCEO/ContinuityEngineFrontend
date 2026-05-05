@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import NavBar from "./NavBar";
+import TickerClient from "./TickerClient";
 
 export const metadata: Metadata = {
   title: "Sagitta Continuity Engine — Web3 Protocol Continuity Intelligence",
@@ -32,15 +33,6 @@ const PURPLE_GRADIENT_TEXT: React.CSSProperties = {
 const BORDER = "rgba(212,175,55,0.14)";
 
 
-const INCIDENTS = [
-  "HoneySwap.Fi rugpull — $3.3M lost",
-  "NeedForSpeed Finance rugpull — $82K lost",
-  "BitBot rugpull — $805K lost",
-  "Cake Lock rugpull — $31K lost",
-  "Merlin Chain exploit — $1.8M lost",
-  "Swaprum rugpull — $3M lost",
-  "Fintoch rugpull — $31.6M lost",
-];
 
 const CAPABILITIES = [
   {
@@ -213,9 +205,8 @@ export default function HomePage() {
               color: TEXT_MUTED,
               lineHeight: 1.78,
             }}>
-              Survival infrastructure for protocols when normal assumptions fail. SCE maps authority surfaces,
-              incident exposure, critical roles, and continuity gaps before a threat-matrix event becomes
-              a public failure.
+              Survival infrastructure for protocols when normal assumptions fail. SCE maps control risk,
+              incident exposure, and authority gaps before a threat-matrix event becomes a public failure.
             </p>
 
             {/* CTAs */}
@@ -233,7 +224,7 @@ export default function HomePage() {
                 gap: 8,
                 whiteSpace: "nowrap" as const,
               }}>Request Defense Review &nbsp;→</a>
-              <a href="#how-it-works" className="hero-cta-btn" style={{
+              <a href="#how-sce-works" className="hero-cta-btn" style={{
                 padding: "14px 24px",
                 borderRadius: 8,
                 border: `1px solid rgba(255,255,255,0.16)`,
@@ -261,69 +252,7 @@ export default function HomePage() {
         </div>
 
         {/* Live Incidents Ticker — pinned to bottom of hero, always above fold */}
-        <div className="ticker-bar" style={{
-          position: "relative",
-          zIndex: 2,
-          flexShrink: 0,
-          background: "#ffffff",
-          borderTop: `1px solid #ef4444`,
-          borderBottom: `1px solid #ef4444`,
-          display: "flex",
-          alignItems: "center",
-          height: 48,
-          overflow: "hidden",
-        }}>
-          {/* Label */}
-          <div className="ticker-label" style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 9,
-            padding: "0 20px",
-            flexShrink: 0,
-            borderRight: "1px solid #e5e7eb",
-            height: "100%",
-          }}>
-            <span style={{
-              width: 10,
-              height: 10,
-              borderRadius: "50%",
-              background: "#ef4444",
-              display: "inline-block",
-              flexShrink: 0,
-            }} />
-            <span style={{ fontWeight: 700, fontSize: 11, letterSpacing: "0.1em", color: "#111827", whiteSpace: "nowrap" }}>
-              LIVE CRITICAL INCIDENTS
-            </span>
-          </div>
-          {/* Scrolling track */}
-          <div className="ticker-scroll" style={{ flex: 1, overflow: "hidden" }}>
-            <div className="ticker-track">
-              {[...INCIDENTS, ...INCIDENTS].map((item, i) => (
-                <span key={i} style={{ color: "#374151", fontSize: 13, fontWeight: 500, padding: "0 4px" }}>
-                  {item}
-                  <span style={{ color: "#ef4444", margin: "0 20px", fontWeight: 700 }}>•</span>
-                </span>
-              ))}
-            </div>
-          </div>
-          {/* Arrow */}
-          <div className="ticker-arrow" style={{
-            flexShrink: 0,
-            width: 40,
-            height: 40,
-            borderRadius: "50%",
-            border: "1px solid #e5e7eb",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 8px",
-            color: "#374151",
-          }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
-          </div>
-        </div>
+        <TickerClient />
 
       </section>
 
@@ -526,6 +455,277 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* WHY SCE VS. AN AUDIT */}
+      <section id="why-sce-vs-audit" style={{
+        scrollMarginTop: 96,
+        position: "relative",
+        overflow: "hidden",
+        background: "#000",
+        borderTop: `1px solid ${PURPLE_FAINT}`,
+        borderBottom: `1px solid ${PURPLE_FAINT}`,
+      }}>
+        <div style={{
+          paddingTop: 96,
+          paddingBottom: 96,
+          paddingLeft: "max(40px, 5vw)",
+          paddingRight: "max(40px, 5vw)",
+        }}>
+
+          {/* Centered header */}
+          <div style={{ textAlign: "center" as const, maxWidth: 680, margin: "0 auto 52px" }}>
+
+            <div style={{
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase" as const,
+              color: PURPLE,
+              marginBottom: 18,
+            }}>
+              Not an audit replacement
+            </div>
+
+            <h2 style={{
+              fontSize: "clamp(28px, 3.4vw, 46px)",
+              fontWeight: 800,
+              lineHeight: 1.08,
+              letterSpacing: "-0.02em",
+              color: TEXT,
+              margin: "0 0 20px",
+            }}>
+              Why SCE vs. an audit
+            </h2>
+
+            <p style={{
+              fontSize: "clamp(15px, 1.6vw, 18px)",
+              fontWeight: 500,
+              color: TEXT_MUTED,
+              lineHeight: 1.55,
+              margin: "0 0 28px",
+            }}>
+              Audits review code. SCE reviews whether the system can survive control failure.
+            </p>
+
+          </div>
+
+          {/* Comparison cards — centered */}
+          <div style={{ maxWidth: 880, margin: "0 auto 36px" }}>
+            <div className="audit-comparison-row" style={{
+              display: "flex",
+              gap: 0,
+              alignItems: "stretch",
+            }}>
+
+              {/* Left card — Traditional Audit */}
+              <div className="audit-card" style={{
+                flex: "1 1 280px",
+                background: "rgba(10,12,18,0.85)",
+                border: `1px solid rgba(148,163,184,0.13)`,
+                borderRadius: 16,
+                padding: "28px 28px 32px",
+                display: "flex",
+                flexDirection: "column" as const,
+              }}>
+                {/* Title row with inline icon */}
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                  <div style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 9,
+                    background: "rgba(148,163,184,0.07)",
+                    border: `1px solid rgba(148,163,184,0.13)`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(148,163,184,0.6)" strokeWidth="1.8">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <line x1="16" y1="13" x2="8" y2="13"/>
+                      <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                  </div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: TEXT, lineHeight: 1.2 }}>
+                    Traditional Audit
+                  </div>
+                </div>
+
+                <div style={{ fontSize: 12, color: TEXT_FAINT, marginBottom: 20, lineHeight: 1.5, paddingLeft: 48 }}>
+                  Code and implementation assurance
+                </div>
+
+                <div style={{ width: "100%", height: 1, background: "rgba(148,163,184,0.08)", marginBottom: 20 }} />
+
+                <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 12, flex: 1 }}>
+                  {[
+                    "Code exploitability review",
+                    "Contract-level vulnerabilities",
+                    "Implementation flaws",
+                    "Best once contracts are near final",
+                  ].map((item) => (
+                    <li key={item} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: TEXT_MUTED, lineHeight: 1.55 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(148,163,184,0.45)" strokeWidth="2" style={{ flexShrink: 0, marginTop: 2 }}>
+                        <polyline points="9 18 15 12 9 6"/>
+                      </svg>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* VS divider */}
+              <div className="audit-vs-divider" style={{
+                display: "flex",
+                flexDirection: "column" as const,
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0 22px",
+                flexShrink: 0,
+                gap: 8,
+              }}>
+                <div className="audit-vs-line" style={{
+                  flex: 1,
+                  width: 1,
+                  minHeight: 32,
+                  background: `linear-gradient(180deg, transparent 0%, ${PURPLE_FAINT} 100%)`,
+                }} />
+                <div style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: "rgba(0,0,0,0.95)",
+                  border: `1px solid ${PURPLE_FAINT}`,
+                  boxShadow: `0 0 0 4px rgba(139,92,246,0.07)`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 14,
+                  fontWeight: 900,
+                  letterSpacing: "0.1em",
+                  color: TEXT,
+                  flexShrink: 0,
+                }}>
+                  VS
+                </div>
+                <div className="audit-vs-line audit-vs-line-end" style={{
+                  flex: 1,
+                  width: 1,
+                  minHeight: 32,
+                  background: `linear-gradient(180deg, ${PURPLE_FAINT} 0%, transparent 100%)`,
+                }} />
+              </div>
+
+              {/* Right card — Sagitta Continuity Engine */}
+              <div className="audit-card" style={{
+                flex: "1 1 280px",
+                background: "rgba(0,0,0,0.7)",
+                border: `1px solid ${PURPLE_FAINT}`,
+                borderRadius: 16,
+                padding: "28px 28px 32px",
+                display: "flex",
+                flexDirection: "column" as const,
+                boxShadow: `0 0 0 1px rgba(139,92,246,0.05) inset, 0 0 40px rgba(139,92,246,0.08)`,
+                position: "relative" as const,
+                overflow: "hidden",
+              }}>
+                {/* Top accent glow line */}
+                <div style={{
+                  position: "absolute",
+                  top: 0, left: 0, right: 0,
+                  height: 2,
+                  background: `linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.5) 30%, ${PURPLE} 55%, transparent 100%)`,
+                  borderRadius: "16px 16px 0 0",
+                }} />
+
+                {/* Title row with inline icon */}
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                  <div style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 9,
+                    background: PURPLE_FAINTEST,
+                    border: `1px solid ${PURPLE_FAINT}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.8">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                      <polyline points="9 12 11 14 15 10"/>
+                    </svg>
+                  </div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: TEXT, lineHeight: 1.2 }}>
+                    Sagitta Continuity Engine
+                  </div>
+                </div>
+
+                <div style={{ fontSize: 12, color: TEXT_FAINT, marginBottom: 20, lineHeight: 1.5, paddingLeft: 48 }}>
+                  Continuity and control readiness
+                </div>
+
+                <div style={{ width: "100%", height: 1, background: PURPLE_FAINT, marginBottom: 20 }} />
+
+                <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 12, flex: 1 }}>
+                  {[
+                    "Authority surface mapping",
+                    "Treasury, oracle, governance, and admin-path risk",
+                    "Emergency response and control verification",
+                    "Best before launch and before capital scales",
+                  ].map((item) => (
+                    <li key={item} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: TEXT_MUTED, lineHeight: 1.55 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="2" style={{ flexShrink: 0, marginTop: 2 }}>
+                        <polyline points="9 18 15 12 9 6"/>
+                      </svg>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Pill + CTA — centered column */}
+          <div style={{ display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 16 }}>
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "7px 16px",
+              borderRadius: 20,
+              border: `1px solid rgba(139,92,246,0.22)`,
+              background: PURPLE_FAINTEST,
+              fontSize: 12,
+              color: TEXT_MUTED,
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={PURPLE_DIM} strokeWidth="1.8">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M9 12l2 2 4-4"/>
+              </svg>
+              Complements audit work.
+            </div>
+
+            <a href="#sample-defense-review" style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "13px 28px",
+              borderRadius: 10,
+              background: GOLD,
+              color: "#111827",
+              textDecoration: "none",
+              fontWeight: 800,
+              fontSize: 14,
+            }}>
+              See Defense Review &nbsp;→
+            </a>
+          </div>
+
+        </div>
+      </section>
+
       {/* HOW SCE WORKS */}
       <section id="how-sce-works" style={{
         scrollMarginTop: 96,
@@ -628,7 +828,7 @@ export default function HomePage() {
               {
                 n: 2,
                 label: "Map protocol surface",
-                body: "Project public contracts, addresses, roles, and authority metadata.",
+                body: "Register public contracts, addresses, roles, and admin paths.",
                 icon: (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="3" width="20" height="4" rx="1"/><rect x="2" y="10" width="20" height="4" rx="1"/><rect x="2" y="17" width="20" height="4" rx="1"/>
@@ -750,6 +950,665 @@ export default function HomePage() {
                 It maps what must survive when conditions break.
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ECOSYSTEM COVERAGE — Built for multi-chain protocol defense */}
+      <section id="ecosystem-coverage" style={{
+        scrollMarginTop: 96,
+        position: "relative",
+        overflow: "hidden",
+        background: "#000",
+        borderTop: `1px solid ${PURPLE_FAINT}`,
+        borderBottom: `1px solid ${PURPLE_FAINT}`,
+      }}>
+        <div style={{
+          paddingTop: 96,
+          paddingBottom: 80,
+          paddingLeft: "max(40px, 5vw)",
+          paddingRight: "max(40px, 5vw)",
+        }}>
+
+          {/* Centered header */}
+          <div style={{ textAlign: "center" as const, margin: "0 auto 52px" }}>
+            <div style={{
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase" as const,
+              color: PURPLE,
+              marginBottom: 18,
+            }}>
+              Ecosystem Coverage
+            </div>
+
+            <h2 style={{
+              fontSize: "clamp(28px, 3.4vw, 46px)",
+              fontWeight: 800,
+              lineHeight: 1.08,
+              letterSpacing: "-0.02em",
+              color: TEXT,
+              margin: "0 0 20px",
+              whiteSpace: "nowrap" as const,
+            }}>
+              Built for multi-chain protocol defense
+            </h2>
+
+            <p style={{
+              fontSize: "clamp(14px, 1.5vw, 17px)",
+              fontWeight: 500,
+              color: TEXT_MUTED,
+              lineHeight: 1.6,
+              margin: "0 0 24px",
+              whiteSpace: "nowrap" as const,
+            }}>
+              Coverage begins with EVM authority-surface reviews and expands through chain-specific adapters.
+            </p>
+          </div>
+
+          {/* Three cards */}
+          <div className="ecosystem-cards" style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 1fr",
+            gap: 16,
+            maxWidth: 1100,
+            margin: "0 auto 40px",
+          }}>
+
+            {/* Card 1 — Active now */}
+            <div style={{
+              background: "rgba(0,0,0,0.7)",
+              border: `1px solid ${PURPLE_FAINT}`,
+              borderRadius: 16,
+              padding: "28px 24px 24px",
+              display: "flex",
+              flexDirection: "column" as const,
+              position: "relative" as const,
+              overflow: "hidden",
+              boxShadow: `0 0 32px rgba(139,92,246,0.07)`,
+            }}>
+              {/* Top accent line */}
+              <div style={{
+                position: "absolute",
+                top: 0, left: 0, right: 0,
+                height: 2,
+                background: `linear-gradient(90deg, transparent, rgba(139,92,246,0.6) 40%, ${PURPLE} 60%, transparent)`,
+                borderRadius: "16px 16px 0 0",
+              }} />
+
+              {/* Icon + title */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+                <div style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 9,
+                  background: PURPLE_FAINTEST,
+                  border: `1px solid ${PURPLE_FAINT}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: TEXT, lineHeight: 1.2 }}>Active now</div>
+                </div>
+                {/* Active status pill */}
+                <div style={{
+                  marginLeft: "auto",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "3px 8px",
+                  borderRadius: 10,
+                  background: "rgba(34,197,94,0.1)",
+                  border: "1px solid rgba(34,197,94,0.2)",
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", display: "inline-block", flexShrink: 0 }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#22c55e", letterSpacing: "0.06em" }}>LIVE</span>
+                </div>
+              </div>
+
+              <div style={{ fontSize: 12, color: TEXT_FAINT, marginBottom: 18, paddingLeft: 48 }}>
+                EVM authority-surface reviews
+              </div>
+
+              <div style={{ width: "100%", height: 1, background: PURPLE_FAINT, marginBottom: 18 }} />
+
+              <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginBottom: 14 }}>
+                {[
+                  "EVM",
+                  "Ethereum-compatible deployments",
+                  "Testnet & mainnet",
+                  "Admin / owner paths",
+                  "Proxy patterns",
+                  "Treasury controls",
+                  "Oracle surfaces",
+                  "Governance / timelocks",
+                ].map((chip) => (
+                  <span key={chip} style={{
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    border: `1px solid ${PURPLE_FAINT}`,
+                    background: PURPLE_FAINTEST,
+                    fontSize: 12,
+                    color: TEXT_MUTED,
+                    fontWeight: 500,
+                    lineHeight: 1.4,
+                  }}>{chip}</span>
+                ))}
+              </div>
+              <div style={{ width: "100%", height: 1, background: PURPLE_FAINT, marginBottom: 14 }} />
+              <div style={{ fontSize: 11, color: TEXT_FAINT, marginBottom: 10, fontWeight: 600 }}>EVM-compatible coverage targets</div>
+              <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 12 }}>
+                {["Ethereum","Base","Arbitrum","Optimism","Polygon","Avalanche C-Chain","BNB Chain","Moonbeam"].map((chain) => (
+                  <span key={chain} style={{
+                    padding: "3px 8px",
+                    borderRadius: 5,
+                    border: `1px solid rgba(139,92,246,0.1)`,
+                    background: "rgba(139,92,246,0.04)",
+                    fontSize: 11,
+                    color: TEXT_FAINT,
+                    fontWeight: 500,
+                  }}>{chain}</span>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: TEXT_FAINT, lineHeight: 1.55, fontStyle: "italic" }}>
+                Active EVM coverage applies where public contract data, explorer records, or project-submitted details are available.
+              </div>
+            </div>
+
+            {/* Card 2 — Expansion targets */}
+            <div style={{
+              background: "rgba(10,12,18,0.85)",
+              border: `1px solid rgba(148,163,184,0.13)`,
+              borderRadius: 16,
+              padding: "28px 24px 24px",
+              display: "flex",
+              flexDirection: "column" as const,
+            }}>
+              {/* Icon + title */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+                <div style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 9,
+                  background: "rgba(148,163,184,0.07)",
+                  border: `1px solid rgba(148,163,184,0.13)`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(148,163,184,0.7)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <circle cx="12" cy="12" r="6"/>
+                    <circle cx="12" cy="12" r="2"/>
+                  </svg>
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: TEXT, lineHeight: 1.2 }}>Expansion targets</div>
+                {/* Planned pill */}
+                <div style={{
+                  marginLeft: "auto",
+                  padding: "3px 8px",
+                  borderRadius: 10,
+                  background: "rgba(245,158,11,0.1)",
+                  border: "1px solid rgba(245,158,11,0.2)",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: "#F59E0B",
+                  letterSpacing: "0.06em",
+                  whiteSpace: "nowrap" as const,
+                }}>PLANNED</div>
+              </div>
+
+              <div style={{ fontSize: 12, color: TEXT_FAINT, marginBottom: 18, paddingLeft: 48 }}>
+                Chain-specific adapters
+              </div>
+
+              <div style={{ width: "100%", height: 1, background: "rgba(148,163,184,0.08)", marginBottom: 18 }} />
+
+              <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8 }}>
+                {[
+                  "Solana",
+                  "AO / Arweave",
+                  "ICP",
+                  "Cosmos",
+                  "Bridges",
+                  "Oracle networks",
+                  "Ecosystem dashboards",
+                ].map((chip) => (
+                  <span key={chip} style={{
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    border: `1px solid rgba(148,163,184,0.13)`,
+                    background: "rgba(148,163,184,0.05)",
+                    fontSize: 12,
+                    color: TEXT_FAINT,
+                    fontWeight: 500,
+                    lineHeight: 1.4,
+                  }}>{chip}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* Card 3 — Grant / ecosystem fit */}
+            <div style={{
+              background: "rgba(0,0,0,0.7)",
+              border: `1px solid ${PURPLE_FAINT}`,
+              borderRadius: 16,
+              padding: "28px 24px 24px",
+              display: "flex",
+              flexDirection: "column" as const,
+            }}>
+              {/* Icon + title */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+                <div style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 9,
+                  background: PURPLE_FAINTEST,
+                  border: `1px solid ${PURPLE_FAINT}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: TEXT, lineHeight: 1.2 }}>Grant / ecosystem fit</div>
+              </div>
+
+              <div style={{ fontSize: 12, color: TEXT_FAINT, marginBottom: 18, paddingLeft: 48 }}>
+                Infrastructure for builder readiness
+              </div>
+
+              <div style={{ width: "100%", height: 1, background: PURPLE_FAINT, marginBottom: 18 }} />
+
+              <p style={{
+                fontSize: 13,
+                lineHeight: 1.7,
+                color: TEXT_MUTED,
+                margin: "0 0 20px",
+                flex: 1,
+              }}>
+                SCE supports ecosystem-wide readiness programs — authority-risk mapping, control identification, and evidence preparation — before capital scales.
+              </p>
+
+              <a href="mailto:sce@sagitta.systems?subject=SCE%20Roadmap" style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                color: PURPLE,
+                textDecoration: "none",
+                padding: "8px 0",
+              }}>
+                Discuss ecosystem coverage &nbsp;→
+              </a>
+            </div>
+
+          </div>
+
+          {/* Footer note */}
+          <div style={{ display: "flex", justifyContent: "center" as const }}>
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 16px",
+              borderRadius: 20,
+              border: `1px solid rgba(139,92,246,0.22)`,
+              background: PURPLE_FAINTEST,
+              fontSize: 12,
+              color: TEXT_MUTED,
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={PURPLE_DIM} strokeWidth="1.8">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M9 12l2 2 4-4"/>
+              </svg>
+              Designed to support ecosystem-wide builder readiness programs.
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* SAMPLE DEFENSE REVIEW */}
+      <section id="sample-defense-review" style={{
+        scrollMarginTop: 96,
+        position: "relative",
+        overflow: "hidden",
+        background: "#000",
+        borderTop: `1px solid ${PURPLE_FAINT}`,
+        borderBottom: `1px solid ${PURPLE_FAINT}`,
+      }}>
+        <div style={{
+          paddingTop: 96,
+          paddingBottom: 96,
+          paddingLeft: "max(40px, 5vw)",
+          paddingRight: "max(40px, 5vw)",
+        }}>
+
+          {/* Section header */}
+          <div style={{ textAlign: "center" as const, maxWidth: 700, margin: "0 auto 56px" }}>
+            <div style={{
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase" as const,
+              color: GOLD_DIM,
+              marginBottom: 18,
+            }}>
+              Sample Pre-Launch Defense Review
+            </div>
+            <h2 style={{
+              fontSize: "clamp(28px, 3.4vw, 46px)",
+              fontWeight: 800,
+              lineHeight: 1.08,
+              letterSpacing: "-0.02em",
+              color: TEXT,
+              margin: "0 0 20px",
+            }}>
+              What a Defense Review contains
+            </h2>
+            <p style={{
+              fontSize: "clamp(15px, 1.6vw, 18px)",
+              fontWeight: 500,
+              color: TEXT_MUTED,
+              lineHeight: 1.55,
+              margin: "0 0 20px",
+            }}>
+              Demo report using Sagitta Protocol testnet deployment.
+            </p>
+            <p style={{ fontSize: 13, lineHeight: 1.8, color: TEXT_FAINT, margin: 0 }}>
+              Shows report structure, authority-surface mapping, evidence workflow, control checks, and next actions. This is a sample Pre-Launch Defense Review — not a verified client result or a completed review.
+            </p>
+          </div>
+
+          {/* Two-column layout */}
+          <div className="sample-defense-row" style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 40,
+            maxWidth: 1100,
+            margin: "0 auto",
+            alignItems: "start",
+          }}>
+
+            {/* LEFT — Mock report cover card */}
+            <div style={{
+              background: "rgba(0,0,0,0.75)",
+              border: `1px solid ${PURPLE_FAINT}`,
+              borderRadius: 20,
+              overflow: "hidden",
+              boxShadow: `0 0 0 1px rgba(139,92,246,0.04) inset, 0 8px 48px rgba(139,92,246,0.1)`,
+              position: "relative" as const,
+            }}>
+              {/* Top accent line */}
+              <div style={{
+                position: "absolute",
+                top: 0, left: 0, right: 0,
+                height: 2,
+                background: `linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.55) 30%, ${GOLD} 55%, transparent 100%)`,
+              }} />
+
+              {/* Cover content */}
+              <div style={{ padding: "40px 36px 32px" }}>
+
+                {/* Org / logo mark */}
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 32,
+                }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/icon.png" alt="" style={{ height: 32, width: "auto", display: "block", opacity: 0.85 }} />
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", color: TEXT }}>SAGITTA</div>
+                    <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.18em", color: GOLD_DIM, textTransform: "uppercase" as const }}>Continuity Engine</div>
+                  </div>
+                  {/* Sample badge */}
+                  <div style={{
+                    marginLeft: "auto",
+                    padding: "3px 9px",
+                    borderRadius: 10,
+                    background: GOLD_FAINTEST,
+                    border: `1px solid ${GOLD_FAINT}`,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    color: GOLD_DIM,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase" as const,
+                  }}>SAMPLE PDF</div>
+                </div>
+
+                {/* Report label */}
+                <div style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase" as const,
+                  color: GOLD_DIM,
+                  marginBottom: 12,
+                }}>
+                  Pre-Launch Defense Review
+                </div>
+
+                {/* Report title */}
+                <div style={{
+                  fontSize: "clamp(22px, 2.8vw, 32px)",
+                  fontWeight: 900,
+                  lineHeight: 1.1,
+                  letterSpacing: "-0.02em",
+                  color: TEXT,
+                  marginBottom: 8,
+                }}>
+                  Pre-Launch<br />Continuity Review
+                </div>
+
+                <div style={{ width: 180, height: 2, background: `linear-gradient(90deg, ${GOLD}, transparent)`, borderRadius: 2, marginBottom: 28 }} />
+
+                {/* Metadata rows */}
+                <div style={{ display: "grid", gap: 10, marginBottom: 32 }}>
+                  {[
+                    { label: "Project", value: "Sagitta Protocol" },
+                    { label: "Environment", value: "Testnet" },
+                    { label: "Review Type", value: "Public-Surface" },
+                    { label: "Coverage", value: "0/29 verified" },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                    }}>
+                      <div style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase" as const,
+                        color: TEXT_FAINT,
+                        minWidth: 96,
+                        flexShrink: 0,
+                      }}>{label}</div>
+                      <div style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: TEXT_MUTED,
+                      }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Divider */}
+                <div style={{ width: "100%", height: 1, background: `rgba(212,175,55,0.1)`, marginBottom: 16 }} />
+
+                {/* Report sections preview */}
+                <div style={{ display: "grid", gap: 6, marginBottom: 4 }}>
+                  {[
+                    "1 -  Executive Summary",
+                    "2 -  Review Scope & Assets",
+                    "3 -  Severity Methodology",
+                    "4 -  Authority Risk Findings",
+                    "5 -  Relevant Threat Families",
+                    "6 -  Recommended Controls",
+                    "7 -  Verification Status",
+                    "8 -  Next Actions",
+                  ].map((item) => (
+                    <div key={item} style={{
+                      fontSize: 11,
+                      color: TEXT_FAINT,
+                      lineHeight: 1.5,
+                      paddingLeft: 4,
+                    }}>{item}</div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT — See the deliverable */}
+            <div style={{ paddingTop: 8 }}>
+
+              <div style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase" as const,
+                color: PURPLE,
+                marginBottom: 14,
+              }}>
+                The report
+              </div>
+
+              <h3 style={{
+                fontSize: "clamp(24px, 2.8vw, 36px)",
+                fontWeight: 800,
+                lineHeight: 1.1,
+                letterSpacing: "-0.02em",
+                color: TEXT,
+                margin: "0 0 16px",
+              }}>
+                See the deliverable
+              </h3>
+
+              <p style={{
+                fontSize: 14,
+                lineHeight: 1.75,
+                color: TEXT_MUTED,
+                margin: "0 0 20px",
+              }}>
+                A structured review covering mapped assets, authority surfaces, threat-family relevance, control checks, and remediation priorities.
+              </p>
+
+              {/* Proof chips */}
+              <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginBottom: 28 }}>
+                {[
+                  { label: "5 mapped assets" },
+                  { label: "29 control checks" },
+                  { label: "5 threat families" },
+                  { label: "0 keys required" },
+                ].map(({ label }) => (
+                  <span key={label} style={{
+                    padding: "5px 12px",
+                    borderRadius: 6,
+                    border: `1px solid ${GOLD_FAINT}`,
+                    background: GOLD_FAINTEST,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: GOLD_DIM,
+                    lineHeight: 1.4,
+                  }}>{label}</span>
+                ))}
+              </div>
+
+              {/* Checklist */}
+              <div style={{ display: "grid", gap: 13, marginBottom: 32 }}>
+                {[
+                  "Mapped assets and authority surfaces",
+                  "Threat-family relevance and risk summary",
+                  "Evidence status and missing controls",
+                  "Verification coverage",
+                  "Findings, severity, and next actions",
+                  "Executive summary for stakeholders",
+                ].map((item) => (
+                  <div key={item} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <div style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 6,
+                      background: GOLD_FAINTEST,
+                      border: `1px solid ${GOLD_FAINT}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      marginTop: 1,
+                    }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={GOLD_DIM} strokeWidth="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    </div>
+                    <span style={{ fontSize: 14, color: TEXT_MUTED, lineHeight: 1.55 }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Trust strip */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "10px 14px",
+                borderRadius: 10,
+                border: `1px solid ${PURPLE_FAINT}`,
+                background: PURPLE_FAINTEST,
+                marginBottom: 28,
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={PURPLE_DIM} strokeWidth="1.8" style={{ flexShrink: 0 }}>
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <path d="M9 12l2 2 4-4"/>
+                </svg>
+                <span style={{ fontSize: 12, color: TEXT_FAINT }}>
+                  Zero-custody · No keys · No signing authority
+                </span>
+              </div>
+
+              {/* CTAs */}
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" as const, alignItems: "center" }}>
+                <a href="/sample-review.pdf" target="_blank" rel="noopener noreferrer" style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "13px 24px",
+                  borderRadius: 10,
+                  background: GOLD,
+                  color: "#111827",
+                  textDecoration: "none",
+                  fontWeight: 800,
+                  fontSize: 14,
+                }}>
+                  View sample report &nbsp;→
+                </a>
+                <span style={{ fontSize: 12, color: TEXT_FAINT }}>
+                  Demo PDF · Sagitta Protocol testnet
+                </span>
+              </div>
+
+            </div>
+
           </div>
         </div>
       </section>
@@ -987,7 +1846,7 @@ export default function HomePage() {
                   justifyContent: "space-between",
                   marginBottom: 20,
                 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: PURPLE, textTransform: "uppercase" as const }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.14em", color: PURPLE, textTransform: "uppercase" as const }}>
                     What You Provide
                   </div>
                   <div style={{
@@ -1044,7 +1903,7 @@ export default function HomePage() {
                   justifyContent: "space-between",
                   marginBottom: 20,
                 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: PURPLE, textTransform: "uppercase" as const }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.14em", color: PURPLE, textTransform: "uppercase" as const }}>
                     What You Receive
                   </div>
                   <div style={{
@@ -1086,7 +1945,7 @@ export default function HomePage() {
 
             {/* CTAs */}
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" as const }}>
-              <a href="mailto:hello@sagitta.systems?subject=SCE%20Defense%20Review%20Request" style={{
+              <a href="mailto:sce@sagitta.systems?subject=SCE%20Defense%20Review%20Request" style={{
                 flex: 1,
                 padding: "14px 24px",
                 borderRadius: 10,
@@ -1143,12 +2002,179 @@ export default function HomePage() {
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
               </div>
-              <span style={{ fontSize: 12, color: TEXT_FAINT, lineHeight: 1.6 }}>
+              <span style={{ fontSize: 12, color: TEXT_FAINT, lineHeight: 2.6 }}>
                 Manual service. Powered internally by Sagitta Continuity Engine (SCE).
-                Zero-custody. Public-surface only.
+                No keys. No wallet access. No signing rights.
+              </span>
+            </div>
+
+            {/* Proof asset callout */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "10px 16px",
+              borderRadius: 10,
+              border: `1px solid ${GOLD_FAINT}`,
+              background: GOLD_FAINTEST,
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={GOLD_DIM} strokeWidth="1.8" style={{ flexShrink: 0 }}>
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              <span style={{ fontSize: 12, color: TEXT_FAINT, lineHeight: 1.5 }}>
+                Proof asset: sample Pre-Launch Defense Review available.{" "}
+                <a href="/sample-review.pdf" target="_blank" rel="noopener noreferrer" style={{ color: GOLD_DIM, textDecoration: "underline", fontWeight: 600 }}>
+                  Review the demo PDF before requesting a Defense Review.
+                </a>
               </span>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" style={{
+        scrollMarginTop: 96,
+        background: BG,
+        borderTop: `1px solid ${BORDER}`,
+        borderBottom: `1px solid ${BORDER}`,
+        padding: "80px max(40px, 5vw) 88px",
+      }}>
+        {/* Section header */}
+        <div style={{ maxWidth: 640, marginBottom: 56 }}>
+          <div style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 18,
+          }}>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.22em",
+              textTransform: "uppercase" as const,
+              color: PURPLE,
+            }}>Questions Before Review</span>
+            <div style={{ width: 32, height: 1, background: `linear-gradient(90deg, ${PURPLE}, transparent)` }} />
+          </div>
+          <h2 style={{
+            margin: "0 0 16px",
+            fontSize: "clamp(28px, 3.5vw, 44px)",
+            fontWeight: 900,
+            lineHeight: 1.1,
+            letterSpacing: "-0.025em",
+            color: TEXT,
+          }}>
+            Frequently asked questions
+          </h2>
+          <p style={{
+            margin: 0,
+            fontSize: 15,
+            lineHeight: 1.7,
+            color: TEXT_MUTED,
+            maxWidth: 520,
+          }}>
+            Clear answers for teams evaluating an SCE Defense Review.
+          </p>
+        </div>
+
+        {/* FAQ grid */}
+        <div className="faq-grid" style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 16,
+        }}>
+          {[
+            {
+              q: "Is SCE a smart contract audit?",
+              a: "No. SCE complements audits; it does not replace them. Audits review code, implementation flaws, and exploit paths. SCE reviews continuity and control readiness: authority surfaces, admin paths, treasury controls, oracle dependencies, governance and timelock posture, keeper and liveness assumptions, emergency procedures, and evidence coverage.",
+            },
+            {
+              q: "Do you need access to our keys or wallets?",
+              a: "No. Never. SCE does not request private keys, seed phrases, custody access, signing authority, or transaction approval rights.",
+            },
+            {
+              q: "What do we need to provide?",
+              a: "At minimum, provide contract addresses, deployment chain, project context, and any known admin, multisig, timelock, oracle, treasury, keeper, or governance configuration. Optional evidence can include policy documents, multisig screenshots, governance proposals, runbooks, emergency procedures, or links to public documentation.",
+            },
+            {
+              q: "Is this useful before mainnet?",
+              a: "Yes. Pre-launch testnet reviews are one of the strongest use cases. Authority patterns, timelocks, multisigs, oracle fallbacks, treasury controls, and emergency procedures are easier to improve before mainnet deployment and before capital scales.",
+            },
+            {
+              q: "Which chains does SCE support?",
+              a: "Active now: EVM and Ethereum-compatible deployments where public contract data, explorer records, or project-submitted details are available. Coverage targets: Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche C-Chain, BNB Chain, Moonbeam. Expansion targets: Solana, AO / Arweave, ICP, Cosmos, bridges, and oracle networks through future chain-specific adapters.",
+            },
+            {
+              q: "What do we receive?",
+              a: "You receive a structured Defense Review report covering mapped assets, control findings, threat-family relevance, evidence status, severity framing, and next actions. When evidence is submitted, SCE can generate an updated report showing improved verification coverage.",
+            },
+            {
+              q: "Does SCE certify that our protocol is safe?",
+              a: "No. SCE does not guarantee safety or certify that a protocol cannot fail. A Defense Review identifies public-surface continuity risks, missing evidence, and control gaps so teams can improve readiness and make better decisions.",
+            },
+            {
+              q: "Who is this for?",
+              a: "SCE Defense Reviews are built for protocol teams, DAOs, DeFi systems, treasury-heavy projects, grant programs, ecosystem foundations, and infrastructure teams that need a clearer view of control failure, authority concentration, oracle risk, treasury posture, and emergency readiness.",
+            },
+            {
+              q: "How is this different from monitoring tools?",
+              a: "Monitoring tools alert teams after signals appear. SCE focuses on readiness before failure: mapping control risk, linking findings to known threat families, identifying missing controls, and preparing evidence and procedures before an incident occurs.",
+            },
+            {
+              q: "Can ecosystems or grant programs use SCE?",
+              a: "Yes. SCE supports ecosystem-wide readiness programs — authority-risk mapping, control gap identification, and evidence preparation before mainnet.",
+            },
+          ].map(({ q, a }) => (
+            <div key={q} style={{
+              background: "linear-gradient(135deg, rgba(139,92,246,0.06) 0%, rgba(8,10,14,0) 100%)",
+              border: `1px solid rgba(139,92,246,0.14)`,
+              borderRadius: 14,
+              padding: "24px 28px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}>
+              <div style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 12,
+              }}>
+                <div style={{
+                  flexShrink: 0,
+                  width: 22,
+                  height: 22,
+                  borderRadius: 6,
+                  background: "rgba(139,92,246,0.13)",
+                  border: `1px solid rgba(139,92,246,0.28)`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginTop: 1,
+                }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2.2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                </div>
+                <p style={{
+                  margin: 0,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  lineHeight: 1.4,
+                  color: TEXT,
+                }}>{q}</p>
+              </div>
+              <p style={{
+                margin: "0 0 0 34px",
+                fontSize: 13,
+                lineHeight: 1.72,
+                color: TEXT_MUTED,
+              }}>{a}</p>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -1198,7 +2224,7 @@ export default function HomePage() {
 
           {/* Buttons */}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", flexShrink: 0 }}>
-            <a href="mailto:hello@sagitta.systems?subject=SCE%20Defense%20Review%20Request" style={{
+            <a href="mailto:sce@sagitta.systems?subject=SCE%20Defense%20Review%20Request" style={{
               padding: "13px 22px",
               borderRadius: 10,
               background: "#D4AF37",
@@ -1239,7 +2265,7 @@ export default function HomePage() {
         {/* Main footer grid */}
         <div className="footer-grid" style={{
           display: "grid",
-          gridTemplateColumns: "minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
+          gridTemplateColumns: "minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr)",
           gap: "40px 32px",
           padding: "64px max(40px, 5vw) 48px",
           borderBottom: `1px solid ${BORDER}`,
@@ -1313,68 +2339,50 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Access column */}
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: PURPLE, textTransform: "uppercase" as const, marginBottom: 20 }}>
-              Access
-            </div>
-            <div style={{ display: "grid", gap: 13 }}>
-              {[
-                { label: "Portal Login", href: "/login", internal: true },
-                { label: "Request Defense Review", href: "mailto:hello@sagitta.systems?subject=SCE%20Defense%20Review%20Request", internal: false },
-                { label: "Request Access", href: "/request-access", internal: true },
-                { label: "Contact", href: "mailto:hello@sagitta.systems", internal: false },
-              ].map(({ label, href, internal }) =>
-                internal ? (
-                  <Link key={label} href={href} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: TEXT_MUTED, textDecoration: "none" }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="2.5" style={{ flexShrink: 0 }}>
-                      <polyline points="9 18 15 12 9 6"/>
-                    </svg>
-                    {label}
-                  </Link>
-                ) : (
-                  <a key={label} href={href} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: TEXT_MUTED, textDecoration: "none" }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="2.5" style={{ flexShrink: 0 }}>
-                      <polyline points="9 18 15 12 9 6"/>
-                    </svg>
-                    {label}
-                  </a>
-                )
-              )}
-            </div>
-          </div>
-
           {/* Built For column */}
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: PURPLE, textTransform: "uppercase" as const, marginBottom: 20 }}>
               Built For
             </div>
-            <div style={{ display: "grid", gap: 13 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               {[
                 {
                   label: "Protocol Teams",
+                  sub: "Review pre-launch authority paths, admin roles, upgrade controls, and emergency procedures.",
                   icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.6"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
                 },
                 {
                   label: "DAOs",
+                  sub: "Map governance risk, quorum assumptions, signer rotation, and timelock posture.",
                   icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.6"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
                 },
                 {
                   label: "DeFi Systems",
+                  sub: "Review oracle dependencies, treasury movement, settlement paths, and keeper liveness.",
                   icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.6"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
                 },
                 {
-                  label: "Treasury-heavy Projects",
+                  label: "Treasury-Heavy Projects",
+                  sub: "Check multisig setup, spending rules, withdrawal paths, and reserve controls.",
                   icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.6"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>,
                 },
                 {
                   label: "Infrastructure Teams",
+                  sub: "Map dependency risk, liveness assumptions, access control, and incident response readiness.",
                   icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.6"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>,
                 },
-              ].map(({ label, icon }) => (
-                <div key={label} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: TEXT_MUTED }}>
-                  <span style={{ flexShrink: 0 }}>{icon}</span>
-                  {label}
+                {
+                  label: "Ecosystem / Grant Programs",
+                  sub: "Support builder readiness, evidence hygiene, and pre-launch continuity standards across funded teams.",
+                  icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.6"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>,
+                },
+              ].map(({ label, sub, icon }) => (
+                <div key={label} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <span style={{ flexShrink: 0, marginTop: 2 }}>{icon}</span>
+                  <div>
+                    <div style={{ fontSize: 13, color: TEXT_MUTED, fontWeight: 600, marginBottom: 2 }}>{label}</div>
+                    <div style={{ fontSize: 11, color: TEXT_FAINT, lineHeight: 1.5 }}>{sub}</div>
+                  </div>
                 </div>
               ))}
             </div>

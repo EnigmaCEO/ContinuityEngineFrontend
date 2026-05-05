@@ -5,6 +5,25 @@ import {
 import type { CaseLibraryActivityItem } from '@/lib/case-library/types';
 import { CLR, CARD_STYLE, activityColor, formatRelative } from '@/lib/case-library/utils';
 
+// ── Freshness badge detection ──────────────────────────────────────────────────
+
+type FreshnessTag = 'duplicate-only' | 'unchanged-only' | 'empty-fetch' | 'stale-hint' | null;
+
+function parseFreshnessTag(message: string): FreshnessTag {
+  if (message.includes('DUPLICATE-ONLY')) return 'duplicate-only';
+  if (message.includes('UNCHANGED-ONLY')) return 'unchanged-only';
+  if (message.includes('EMPTY-FETCH'))    return 'empty-fetch';
+  if (message.includes('STALE-HINT'))     return 'stale-hint';
+  return null;
+}
+
+const FRESHNESS_BADGE: Record<NonNullable<FreshnessTag>, { label: string; color: string }> = {
+  'duplicate-only': { label: 'DUPLICATE-ONLY', color: '#F59E0B' },
+  'unchanged-only': { label: 'UNCHANGED',       color: '#64748B' },
+  'empty-fetch':    { label: 'EMPTY FETCH',      color: '#EF4444' },
+  'stale-hint':     { label: 'STALE HINT',       color: '#F97316' },
+};
+
 interface Props {
   items:   CaseLibraryActivityItem[];
   loading: boolean;
@@ -80,9 +99,11 @@ export function CaseLibraryActivityFeed({ items, loading }: Props) {
               </div>
             )
             : items.map((item, idx) => {
-              const color  = activityColor(item.category);
-              const accent = severityAccent(item.severity);
-              const Icon   = CATEGORY_ICON[item.category] ?? FileText;
+              const color       = activityColor(item.category);
+              const accent      = severityAccent(item.severity);
+              const Icon        = CATEGORY_ICON[item.category] ?? FileText;
+              const freshness   = item.category === 'sync' ? parseFreshnessTag(item.message) : null;
+              const freshBadge  = freshness ? FRESHNESS_BADGE[freshness] : null;
               return (
                 <div
                   key={item.id}
@@ -105,7 +126,18 @@ export function CaseLibraryActivityFeed({ items, loading }: Props) {
                     <span style={{ fontSize: 11, color: accent ? accent : '#CBD5E1', lineHeight: 1.45 }}>
                       {item.message}
                     </span>
-                    {item.severity && item.severity !== 'info' && (
+                    {freshBadge && (
+                      <span style={{
+                        display: 'inline-block', marginLeft: 6,
+                        fontSize: 8, fontWeight: 700, letterSpacing: '0.07em',
+                        color: freshBadge.color, background: `${freshBadge.color}18`,
+                        border: `1px solid ${freshBadge.color}35`,
+                        borderRadius: 3, padding: '1px 5px', verticalAlign: 'middle',
+                      }}>
+                        {freshBadge.label}
+                      </span>
+                    )}
+                    {!freshBadge && item.severity && item.severity !== 'info' && (
                       <span style={{
                         display: 'inline-block', marginLeft: 6,
                         fontSize: 8.5, fontWeight: 700, letterSpacing: '0.07em',

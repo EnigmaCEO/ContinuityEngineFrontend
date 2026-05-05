@@ -139,6 +139,30 @@ function _reportRemediation(finding: AdminSurfaceFinding): string {
   return "";
 }
 
+// ─── Asset-specific control title helper ─────────────────────────────────────
+function resolveControlTitle(
+  control: ProjectControl,
+  assets: ProjectAsset[],
+  findings: AdminSurfaceFinding[],
+  titleCounts: Map<string, number>,
+): string {
+  if ((titleCounts.get(control.title) ?? 0) <= 1) return control.title;
+  const assetId = control.assetId ?? (() => {
+    const f = findings.find((x) => x.id === (control.findingId ?? ""));
+    return f?.assetId ?? null;
+  })();
+  const asset = assetId ? assets.find((a) => a.id === assetId) : undefined;
+  const role = asset
+    ? ((asset.metadata?.role as string | undefined) ?? asset.name)
+    : null;
+  if (!role) return control.title;
+  const generic = /\ball\s+(admin\/owner|admin|owner)\b/i;
+  if (generic.test(control.title)) {
+    return control.title.replace(generic, `${role} admin/owner`);
+  }
+  return `${control.title} — ${role}`;
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function fmtDate(v?: string | null): string {
   if (!v) return "—";
@@ -152,90 +176,105 @@ function buildNextActions(
   controls: ProjectControl[],
 ): string[] {
   const actions: string[] = [];
-  const crit = findings.filter((f) => f.severity === "critical");
-  const high = findings.filter((f) => f.severity === "high");
   const missing = controls.filter((c) => c.status === "missing");
-  const planned = controls.filter((c) => c.status === "planned");
   const unverified = controls.filter(
     (c) => c.status !== "verified" && c.status !== "not_applicable",
   );
   const verified = controls.filter((c) => c.status === "verified");
+  const crit = findings.filter((f) => f.severity === "critical");
 
-  if (crit.length > 0)
-    actions.push(
-      `Address ${crit.length} critical authority finding${crit.length > 1 ? "s" : ""} before deployment or continued operation.`,
-    );
-  if (high.length > 0)
-    actions.push(
-      `Review and remediate ${high.length} high-severity finding${high.length > 1 ? "s" : ""}.`,
-    );
-  if (controls.length === 0 && findings.length > 0)
-    actions.push("Generate recommended controls from identified authority findings.");
-  if (missing.length > 0)
-    actions.push(
-      `Implement ${missing.length} control${missing.length > 1 ? "s" : ""} currently marked as Missing.`,
-    );
-  if (planned.length > 0)
-    actions.push(
-      `Complete ${planned.length} planned control${planned.length > 1 ? "s" : ""} to progress toward verified coverage.`,
-    );
-  if (unverified.length > 0 && verified.length > 0)
-    actions.push(
-      `Verify ${unverified.length} remaining control${unverified.length > 1 ? "s" : ""} to strengthen coverage.`,
-    );
+  const knownRoles = ["treasury", "vault", "escrow", "reserve", "oracle"];
+  const affectedRoles = knownRoles.filter((r) =>
+    findings.some((f) => f.findingType.startsWith(r) || f.findingType.includes(r)),
+  );
+  const roleList =
+    affectedRoles.length > 0
+      ? affectedRoles.join(", ")
+      : "treasury, vault, escrow, reserve, and oracle";
 
-  const hasTimelockIssue = findings.some((f) => f.findingType === "missing_timelock");
-  if (hasTimelockIssue)
+  actions.push(
+    "Submit or confirm the mapped asset inventory — verify all contracts, proxies, oracles, and keepers are represented in the Project Map.",
+  );
+  actions.push(
+    "Provide admin/owner/multisig/timelock evidence for each mapped asset authority surface.",
+  );
+  actions.push(`Verify authority paths for: ${roleList}.`);
+  actions.push(
+    "Document role separation and emergency procedures for each authority surface.",
+  );
+
+  if (missing.length > 0) {
+    actions.push(
+      `Attach or link policy evidence for ${missing.length} evidence and control check${missing.length > 1 ? "s" : ""} currently marked as Missing.`,
+    );
+  } else if (unverified.length > 0) {
+    actions.push(
+      `Attach or link policy evidence for ${unverified.length} outstanding evidence and control check${unverified.length > 1 ? "s" : ""}.`,
+    );
+  } else {
+    actions.push(
+      "Attach or link policy evidence for any outstanding evidence and control checks.",
+    );
+  }
+
+  if (crit.length > 0) {
+    actions.push(
+      `Address ${crit.length} critical authority surface${crit.length > 1 ? "s" : ""} — these require immediate attention before deployment or continued operation.`,
+    );
+  }
+  if (findings.some((f) => f.findingType === "missing_timelock")) {
     actions.push(
       "Implement upgrade timelocks to provide a governance review window before upgrades take effect.",
     );
-
-  const hasOwnerEOA = findings.some((f) => f.findingType === "owner_eoa");
-  if (hasOwnerEOA)
+  }
+  if (findings.some((f) => f.findingType === "owner_eoa")) {
     actions.push(
-      "Transition owner accounts from externally-owned accounts (EOA) to a multisig or timelocked governance structure.",
+      "Transition owner accounts from EOA to multisig or timelocked governance.",
     );
-
-  const hasRoleConc = findings.some((f) => f.findingType === "role_concentration");
-  if (hasRoleConc)
+  }
+  if (
+    findings.some(
+      (f) =>
+        f.findingType === "role_concentration" ||
+        f.findingType.includes("role_concentration"),
+    )
+  ) {
     actions.push(
       "Distribute concentrated admin roles across separate key holders or governance contracts.",
     );
-
-  if (actions.length === 0 && verified.length > 0) {
-    actions.push(
-      "Maintain and periodically re-verify existing controls as the project evolves.",
-    );
-    actions.push(
-      "Re-run the Admin Surface Scan after protocol upgrades, ownership changes, or dependency updates.",
-    );
   }
 
-  if (actions.length === 0) {
-    actions.push(
-      "Complete project configuration by adding public assets and running the Admin Surface Scan.",
-    );
-    actions.push("Generate controls after findings are available.");
-  }
+  actions.push(
+    "Re-run SCE Admin Surface Scan after submitting evidence to refresh findings and authority path verification.",
+  );
+  actions.push(
+    `Generate updated report with verified-control coverage. Current status: ${verified.length} of ${controls.length} evidence and control check${controls.length !== 1 ? "s" : ""} verified.`,
+  );
 
   return actions;
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
-function SectionHeader({ children }: { children: React.ReactNode }) {
+function SectionHeader({ children, num }: { children: React.ReactNode; num?: number }) {
   return (
     <h2
       style={{
         margin: "0 0 16px 0",
-        fontSize: 15,
+        fontSize: 13,
         fontWeight: 700,
-        letterSpacing: "0.06em",
+        letterSpacing: "0.1em",
         color: TEXT,
-        paddingBottom: 8,
+        paddingBottom: 10,
         borderBottom: `1px solid ${SEP}`,
         textTransform: "uppercase",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
       }}
     >
+      {num !== undefined && (
+        <span style={{ color: GOLD, fontWeight: 800, fontSize: 12 }}>{String(num).padStart(2, "0")}</span>
+      )}
       {children}
     </h2>
   );
@@ -329,17 +368,21 @@ function EmptyState({ text }: { text: string }) {
 
 function ReportSection({
   id,
+  breakBefore,
   children,
 }: {
   id?: string;
+  breakBefore?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <section
       id={id}
+      className={breakBefore ? "print-break-before" : undefined}
       style={{
-        marginBottom: 36,
+        marginBottom: 40,
         pageBreakInside: "avoid",
+        breakInside: "avoid",
       }}
     >
       {children}
@@ -457,6 +500,8 @@ export default function DefenseReviewReportPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -502,6 +547,36 @@ export default function DefenseReviewReportPage() {
     }
   }
 
+  async function handleDownloadPdf() {
+    if (!review) return;
+    setDownloading(true);
+    setDownloadError("");
+    try {
+      const token = window.localStorage.getItem("sce_session_token");
+      const res = await fetch(`/api/defense-review/${review.id}/pdf`, {
+        headers: token ? { "X-SCE-Session": token } : {},
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const safeName = review.projectName.replace(/[^a-zA-Z0-9-_]/g, "-");
+      a.href = url;
+      a.download = `SCE-Defense-Review-${safeName}-${review.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "PDF generation failed.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   // ── Derived ────────────────────────────────────────────────────────────────
   const openFindings = findings.filter((f) => f.status === "open");
   const criticalCount = openFindings.filter((f) => f.severity === "critical").length;
@@ -511,12 +586,18 @@ export default function DefenseReviewReportPage() {
     controls.length > 0 ? Math.round((verifiedControls.length / controls.length) * 100) : 0;
   const isDefended = verifiedControls.length > 0 && controls.length > 0 && controlCoverage === 100;
 
-  const contractAssets = assets.filter(
-    (a) => (a.assetType === "contract" || a.assetType === "proxy") && a.status !== "archived",
+  const activeAssets = assets.filter((a) => a.status !== "archived");
+  const contractAssets = activeAssets.filter(
+    (a) => a.assetType === "contract" || a.assetType === "proxy",
   );
-  const frontendAssets = assets.filter(
-    (a) => a.assetType === "frontend" && a.status !== "archived",
+  const frontendAssets = activeAssets.filter((a) => a.assetType === "frontend");
+  const otherAssets = activeAssets.filter(
+    (a) =>
+      a.assetType !== "contract" &&
+      a.assetType !== "proxy" &&
+      a.assetType !== "frontend",
   );
+
   const websiteUrl: string | undefined = (() => {
     const v =
       contractAssets[0]?.metadata?.websiteUrl ??
@@ -549,6 +630,12 @@ export default function DefenseReviewReportPage() {
       items: controls.filter((c) => c.status === st),
     }))
     .filter((g) => g.items.length > 0);
+
+  // Build title-count map for asset-specific control deduplication
+  const titleCounts = new Map<string, number>();
+  for (const c of controls) {
+    titleCounts.set(c.title, (titleCounts.get(c.title) ?? 0) + 1);
+  }
 
   // ── Render states ──────────────────────────────────────────────────────────
   if (loading) {
@@ -586,13 +673,35 @@ export default function DefenseReviewReportPage() {
     <>
       {/* Print styles — scoped to this page */}
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
         @media print {
+          /* Hide UI chrome — report content only */
           .no-print { display: none !important; }
-          body { background: #0a0c12 !important; }
+          .dashboard-chrome { display: none !important; }
+
+          /* Fix the dashboard shell flex layout for print */
+          #dashboard-shell-root {
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
+          }
+          #dashboard-main-content {
+            overflow: visible !important;
+            height: auto !important;
+          }
+
+          body {
+            background: #0a0c12 !important;
+            font-family: 'Inter', system-ui, sans-serif !important;
+            overflow: visible !important;
+          }
           .report-root { padding: 0 !important; }
           .report-container { box-shadow: none !important; }
+          .print-break-before { page-break-before: always; break-before: page; }
+          .print-avoid-break { page-break-inside: avoid; break-inside: avoid; }
         }
-        @page { margin: 24mm 18mm; }
+        @page { margin: 20mm 18mm; size: A4; }
+        @page :first { margin-top: 0mm; }
       `}</style>
 
       <div
@@ -611,27 +720,50 @@ export default function DefenseReviewReportPage() {
           }}
         >
           <NavChip href={`/dashboard/defense-review/${review.id}`} label="← Defense Review" />
-          <NavChip href="/dashboard/project-map" label="Project Map" />
-          <NavChip href="/dashboard/project-map" label="View Controls" />
-          <NavChip href="/dashboard/threat-matrix" label="Relevant Threats" />
+          <NavChip href={`/dashboard/project-map?project=${review.projectId}`} label="Project Map" />
+          <NavChip href={`/dashboard/project-map?project=${review.projectId}&tab=controls`} label="Controls" />
+          <NavChip href="/dashboard/threat-matrix" label="Threat Matrix" />
           <div style={{ flex: 1 }} />
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={handleDownloadPdf}
+            disabled={downloading}
             style={{
-              background: "transparent",
-              border: `1px solid ${GOLD}44`,
+              background: downloading ? "rgba(212,175,55,0.15)" : GOLD,
+              border: "none",
               borderRadius: 4,
-              color: GOLD,
+              color: downloading ? GOLD : "#0a0c12",
               fontSize: 11,
-              padding: "4px 12px",
-              cursor: "pointer",
-              fontWeight: 600,
+              padding: "6px 16px",
+              cursor: downloading ? "wait" : "pointer",
+              fontWeight: 700,
+              letterSpacing: "0.04em",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            Print / Save PDF
+            {downloading ? "Generating PDF…" : "⬇ Download PDF"}
           </button>
         </nav>
+
+        {downloadError && (
+          <div
+            className="no-print"
+            style={{
+              maxWidth: 880,
+              margin: "0 auto 12px",
+              padding: "8px 14px",
+              background: "rgba(239,68,68,0.08)",
+              border: "1px solid rgba(239,68,68,0.25)",
+              borderRadius: 5,
+              fontSize: 12,
+              color: "#FCA5A5",
+            }}
+          >
+            PDF error: {downloadError}
+          </div>
+        )}
 
         <div
           className="report-container"
@@ -665,63 +797,92 @@ export default function DefenseReviewReportPage() {
           />
 
           {/* ═══════════════════════════════════════════════════════════ */}
-          {/* REPORT HEADER                                               */}
+          {/* REPORT HEADER / COVER                                       */}
           {/* ═══════════════════════════════════════════════════════════ */}
           <ReportSection id="report-header">
+            {/* Gold accent bar at top */}
+            <div style={{ height: 4, background: `linear-gradient(90deg, ${GOLD}, ${GOLD}55)`, borderRadius: 2, marginBottom: 32 }} />
+
+            {/* Brand + confidential row */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                <span style={{ fontSize: 22, fontWeight: 800, color: GOLD, letterSpacing: "0.04em" }}>SCE</span>
+                <span style={{ fontSize: 11, color: MUTED, letterSpacing: "0.14em" }}>SAGITTA CONTINUITY ENGINE</span>
+              </div>
+              <span
+                style={{
+                  fontSize: 9,
+                  fontWeight: 800,
+                  letterSpacing: "0.2em",
+                  color: GOLD,
+                  border: `1px solid ${GOLD}66`,
+                  padding: "3px 8px",
+                  borderRadius: 3,
+                }}
+              >
+                CONFIDENTIAL
+              </span>
+            </div>
+
+            {/* Report type label */}
             <div
               style={{
-                borderBottom: `2px solid ${SEP}`,
-                paddingBottom: 20,
-                marginBottom: 20,
+                fontSize: 10,
+                letterSpacing: "0.22em",
+                color: `${GOLD}88`,
+                marginBottom: 10,
+                textTransform: "uppercase",
               }}
             >
-              <div
-                style={{
-                  fontSize: 10,
-                  letterSpacing: "0.2em",
-                  color: `${GOLD}99`,
-                  marginBottom: 8,
-                }}
-              >
-                SCE — PUBLIC-SURFACE REVIEW REPORT
-              </div>
-              <h1
-                style={{
-                  margin: "0 0 10px 0",
-                  fontSize: 28,
-                  fontWeight: 800,
-                  color: TEXT,
-                  lineHeight: 1.2,
-                }}
-              >
-                {review.projectName}
-              </h1>
+              Public-Surface Defense Review Report
+            </div>
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                  gap: "6px 24px",
-                  fontSize: 12,
-                  color: MUTED,
-                }}
-              >
-                <MetaRow label="Review ID" value={review.id} />
-                <MetaRow
-                  label="Review Status"
-                  value={REVIEW_STATUS_LABEL[review.status]}
-                />
-                <MetaRow label="Created" value={fmtDate(review.createdAt)} />
-                <MetaRow label="Last Updated" value={fmtDate(review.updatedAt)} />
-                <MetaRow
-                  label="Report Status"
-                  value={REPORT_STATUS_LABEL[review.reportStatus] ?? review.reportStatus}
-                  highlight={review.reportStatus === "ready"}
-                />
-                {project?.environment && (
-                  <MetaRow label="Environment" value={project.environment} />
-                )}
-              </div>
+            {/* Project name */}
+            <h1
+              style={{
+                margin: "0 0 6px 0",
+                fontSize: 32,
+                fontWeight: 800,
+                color: TEXT,
+                lineHeight: 1.15,
+                letterSpacing: "-0.01em",
+              }}
+            >
+              {review.projectName}
+            </h1>
+
+            {/* Prepared by line */}
+            <div style={{ fontSize: 12, color: MUTED, marginBottom: 24 }}>
+              Prepared by Sagitta Continuity Engine (SCE) · {fmtDate(review.updatedAt)}
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, background: `linear-gradient(90deg, ${GOLD}44, transparent)`, marginBottom: 20 }} />
+
+            {/* Metadata grid */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: "10px 32px",
+                fontSize: 12,
+                color: MUTED,
+                paddingBottom: 20,
+                borderBottom: `1px solid ${SEP}`,
+              }}
+            >
+              <MetaRow label="Review ID" value={review.id} />
+              <MetaRow label="Review Status" value={REVIEW_STATUS_LABEL[review.status]} />
+              <MetaRow label="Initiated" value={fmtDate(review.createdAt)} />
+              <MetaRow label="Last Updated" value={fmtDate(review.updatedAt)} />
+              <MetaRow
+                label="Report Status"
+                value={REPORT_STATUS_LABEL[review.reportStatus] ?? review.reportStatus}
+                highlight={review.reportStatus === "ready"}
+              />
+              {project?.environment && (
+                <MetaRow label="Environment" value={project.environment} />
+              )}
             </div>
           </ReportSection>
 
@@ -729,25 +890,60 @@ export default function DefenseReviewReportPage() {
           {/* EXECUTIVE SUMMARY                                           */}
           {/* ═══════════════════════════════════════════════════════════ */}
           <ReportSection id="executive-summary">
-            <SectionHeader>Executive Summary</SectionHeader>
+            <SectionHeader num={1}>Executive Summary</SectionHeader>
             <p
               style={{
-                fontSize: 14,
-                color: TEXT,
-                lineHeight: 1.7,
+                fontSize: 13,
+                color: MUTED,
+                lineHeight: 1.75,
                 margin: "0 0 20px 0",
               }}
             >
               This report reflects a public-surface review of{" "}
-              <strong style={{ color: GOLD }}>{review.projectName}</strong> conducted by
-              SCE. The analysis covers mapped public assets, authority risk findings derived
-              from the Admin Surface Scanner, relevant global threat families, and recommended
-              controls. SCE does not control this project, hold keys, or execute on-chain
-              transactions.
+              <strong style={{ color: TEXT }}>{review.projectName}</strong> conducted by
+              Sagitta Continuity Engine (SCE). The analysis covers mapped public assets,
+              authority risk findings derived from the Admin Surface Scanner, relevant
+              global threat families, and recommended evidence and control checks. SCE does not control this
+              project, hold keys, or execute on-chain transactions.
             </p>
 
+            {/* Risk posture banner */}
+            {(() => {
+              const riskColor = criticalCount > 0 ? "#EF4444" : highCount > 0 ? "#F97316" : isDefended ? "#22C55E" : GOLD;
+              const riskLabel = criticalCount > 0 ? "Critical Risk" : highCount > 0 ? "High Risk" : isDefended ? "Defended" : "Under Review";
+              const riskDesc = criticalCount > 0
+                ? `${criticalCount} critical authority surface${criticalCount > 1 ? "s" : ""} require immediate attention.`
+                : highCount > 0
+                  ? `${highCount} high-risk authority surface${highCount > 1 ? "s" : ""} require verification. These are unverified authority surfaces — not confirmed vulnerabilities.`
+                  : isDefended
+                    ? "All controls verified. Project meets the SCE Defended threshold."
+                    : `Evidence and control verification at ${controlCoverage}%. Review in progress.`;
+              return (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    padding: "12px 16px",
+                    background: `${riskColor}0d`,
+                    border: `1px solid ${riskColor}44`,
+                    borderLeft: `4px solid ${riskColor}`,
+                    borderRadius: "0 6px 6px 0",
+                    marginBottom: 20,
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", color: riskColor, marginBottom: 2 }}>
+                      RISK POSTURE — {riskLabel.toUpperCase()}
+                    </div>
+                    <div style={{ fontSize: 12, color: TEXT }}>{riskDesc}</div>
+                  </div>
+                </div>
+              );
+            })()}
+
             <StatGrid>
-              <Stat label="Assets Mapped" value={review.assetsCount} />
+              <Stat label="Assets Mapped" value={activeAssets.length || review.assetsCount} />
               <Stat
                 label="Open Findings"
                 value={openFindings.length || review.findingsCount}
@@ -755,7 +951,7 @@ export default function DefenseReviewReportPage() {
               <Stat
                 label="Critical / High"
                 value={`${criticalCount} / ${highCount}`}
-                color={criticalCount > 0 ? "#EF4444" : TEXT}
+                color={criticalCount > 0 ? "#EF4444" : highCount > 0 ? "#F97316" : TEXT}
               />
               <Stat
                 label="Threat Families"
@@ -765,11 +961,22 @@ export default function DefenseReviewReportPage() {
                     : review.relevantThreatFamiliesCount
                 }
               />
-              <Stat label="Controls" value={review.controlsCount} />
+              <Stat label="Controls" value={controls.length} />
               <Stat
                 label="Verified"
-                value={`${verifiedControls.length} / ${review.controlsCount}`}
+                value={`${verifiedControls.length} / ${controls.length}`}
                 color={verifiedControls.length > 0 ? "#22C55E" : TEXT}
+              />
+              <Stat
+                label="Coverage"
+                value={`${controlCoverage}%`}
+                color={
+                  controlCoverage === 100
+                    ? "#22C55E"
+                    : controlCoverage > 0
+                    ? GOLD
+                    : TEXT
+                }
               />
             </StatGrid>
 
@@ -784,7 +991,7 @@ export default function DefenseReviewReportPage() {
                   color: "#86EFAC",
                 }}
               >
-                All generated controls are verified for current project metadata. Coverage: 100%.
+                All generated evidence and control checks are verified for current project metadata. Coverage: 100%.
               </div>
             ) : (
               <div
@@ -793,15 +1000,14 @@ export default function DefenseReviewReportPage() {
                   background: "rgba(212,175,55,0.05)",
                   border: `1px solid ${SEP}`,
                   borderRadius: 6,
-                  fontSize: 13,
+                  fontSize: 12,
                   color: MUTED,
                 }}
               >
-                Control verification is{" "}
-                <strong style={{ color: TEXT }}>{controlCoverage}%</strong> complete.
-                {" "}
+                Evidence and control verification is{" "}
+                <strong style={{ color: TEXT }}>{controlCoverage}%</strong> complete.{" "}
                 {!isDefended &&
-                  '"Defended" status applies only when controls are verified against current project metadata.'}
+                  '"Defended" status applies only when all checks are verified against current project metadata.'}
               </div>
             )}
           </ReportSection>
@@ -810,7 +1016,7 @@ export default function DefenseReviewReportPage() {
           {/* REVIEW SCOPE                                                */}
           {/* ═══════════════════════════════════════════════════════════ */}
           <ReportSection id="review-scope">
-            <SectionHeader>Review Scope</SectionHeader>
+            <SectionHeader num={2}>Review Scope</SectionHeader>
 
             <div
               style={{
@@ -818,7 +1024,7 @@ export default function DefenseReviewReportPage() {
                 background: "rgba(212,175,55,0.04)",
                 border: `1px solid ${SEP}`,
                 borderRadius: 6,
-                marginBottom: 16,
+                marginBottom: 8,
                 fontSize: 13,
                 color: MUTED,
                 lineHeight: 1.6,
@@ -828,6 +1034,28 @@ export default function DefenseReviewReportPage() {
               available metadata: contract addresses, deployment chains, admin surface
               indicators, and documented protocol configurations. No private keys, signing
               credentials, mnemonics, or seed phrases are requested or stored at any point.
+              <div style={{ marginTop: 6, fontSize: 11, color: SUBTLE }}>
+                Public-surface describes the data reviewed; Confidential describes distribution of this report.
+              </div>
+            </div>
+
+            {/* Not an Audit disclaimer */}
+            <div
+              style={{
+                padding: "10px 14px",
+                borderLeft: "3px solid rgba(148,163,184,0.3)",
+                background: "rgba(148,163,184,0.04)",
+                borderRadius: "0 5px 5px 0",
+                marginBottom: 16,
+                fontSize: 12,
+                color: SUBTLE,
+                lineHeight: 1.6,
+              }}
+            >
+              <strong style={{ letterSpacing: "0.06em", color: SUBTLE }}>NOT AN AUDIT.</strong>{" "}
+              This Defense Review is not a full smart contract audit, formal verification report,
+              penetration test, or economic exploit review. It is a zero-custody authority-surface
+              and continuity-readiness review based on public metadata and submitted evidence.
             </div>
 
             {project?.description && (
@@ -836,67 +1064,103 @@ export default function DefenseReviewReportPage() {
               </p>
             )}
 
+            {/* Mapped contracts/proxies */}
             {contractAssets.length > 0 && (
               <div style={{ marginBottom: 12 }}>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: SUBTLE,
-                    letterSpacing: "0.08em",
-                    marginBottom: 6,
-                  }}
-                >
+                <div style={{ fontSize: 11, color: SUBTLE, letterSpacing: "0.08em", marginBottom: 6 }}>
                   MAPPED CONTRACTS / PROXIES
                 </div>
                 {contractAssets.map((a) => (
                   <div
                     key={a.id}
                     style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 10,
-                      padding: "6px 0",
+                      padding: "8px 0",
                       borderBottom: `1px solid ${SEP}`,
                       fontSize: 13,
                     }}
                   >
-                    <Pill
-                      label={a.assetType}
-                      color={GOLD}
-                    />
-                    <div>
-                      <span style={{ color: TEXT, fontWeight: 600 }}>{a.name}</span>
-                      {a.address && (
-                        <span style={{ color: MUTED, marginLeft: 8, fontFamily: "monospace", fontSize: 12 }}>
-                          {a.address}
-                        </span>
-                      )}
-                      {a.chain && (
-                        <span style={{ color: SUBTLE, marginLeft: 8, fontSize: 11 }}>
-                          {a.chain}
-                          {a.network ? ` / ${a.network}` : ""}
-                        </span>
-                      )}
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <Pill label={a.assetType} color={GOLD} />
+                      <div style={{ flex: 1 }}>
+                        <span style={{ color: TEXT, fontWeight: 600 }}>{a.name}</span>
+                        <div style={{ marginTop: 2, fontSize: 11, color: MUTED, fontFamily: "monospace" }}>
+                          {a.address ?? <span style={{ color: SUBTLE, fontFamily: "inherit", fontStyle: "italic" }}>Address: Not provided</span>}
+                        </div>
+                        {a.chain && (
+                          <div style={{ fontSize: 11, color: SUBTLE, marginTop: 1 }}>
+                            {a.chain}{a.network ? ` / ${a.network}` : ""}
+                          </div>
+                        )}
+                        <div style={{ fontSize: 11, color: SUBTLE, marginTop: 1 }}>
+                          Admin/Owner:{" "}
+                          {(a.metadata?.ownerType as string | undefined) ?? (
+                            <span style={{ fontStyle: "italic" }}>Not detected</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
 
+            {/* Other asset types */}
+            {otherAssets.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, color: SUBTLE, letterSpacing: "0.08em", marginBottom: 6 }}>
+                  OTHER MAPPED ASSETS
+                </div>
+                {otherAssets.map((a) => (
+                  <div
+                    key={a.id}
+                    style={{
+                      padding: "8px 0",
+                      borderBottom: `1px solid ${SEP}`,
+                      fontSize: 13,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <Pill label={a.assetType} color={GOLD} />
+                      <div style={{ flex: 1 }}>
+                        <span style={{ color: TEXT, fontWeight: 600 }}>{a.name}</span>
+                        {a.address ? (
+                          <div style={{ marginTop: 2, fontSize: 11, color: MUTED, fontFamily: "monospace" }}>
+                            {a.address}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 11, color: SUBTLE, fontStyle: "italic", marginTop: 2 }}>
+                            Address: Not provided
+                          </div>
+                        )}
+                        {a.chain && (
+                          <div style={{ fontSize: 11, color: SUBTLE, marginTop: 1 }}>
+                            {a.chain}{a.network ? ` / ${a.network}` : ""}
+                          </div>
+                        )}
+                        <div style={{ fontSize: 11, color: SUBTLE, marginTop: 1 }}>
+                          Admin/Owner:{" "}
+                          {(a.metadata?.ownerType as string | undefined) ?? (
+                            <span style={{ fontStyle: "italic" }}>Not detected</span>
+                          )}
+                          {(a.metadata?.role as string | undefined) && (
+                            <span> · Role: {a.metadata?.role as string}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Frontend assets */}
             {frontendAssets.length > 0 && (
               <div style={{ marginBottom: 12 }}>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: SUBTLE,
-                    letterSpacing: "0.08em",
-                    marginBottom: 6,
-                  }}
-                >
+                <div style={{ fontSize: 11, color: SUBTLE, letterSpacing: "0.08em", marginBottom: 6 }}>
                   FRONTEND / INTERFACE
                 </div>
                 {frontendAssets.map((a) => (
-                  <div key={a.id} style={{ fontSize: 13, color: MUTED, padding: "4px 0" }}>
+                  <div key={a.id} style={{ fontSize: 13, color: MUTED, padding: "4px 0", borderBottom: `1px solid ${SEP}` }}>
                     <span style={{ color: TEXT }}>{a.name}</span>
                     {a.url && (
                       <span style={{ marginLeft: 8, color: SUBTLE, fontFamily: "monospace", fontSize: 12 }}>
@@ -945,16 +1209,70 @@ export default function DefenseReviewReportPage() {
               </div>
             )}
 
-            {contractAssets.length === 0 && frontendAssets.length === 0 && (
+            {activeAssets.length === 0 && (
               <EmptyState text="No mapped public assets. Add contract or frontend assets in the Project Map to populate scope." />
             )}
           </ReportSection>
 
           {/* ═══════════════════════════════════════════════════════════ */}
+          {/* SEVERITY METHODOLOGY                                        */}
+          {/* ═══════════════════════════════════════════════════════════ */}
+          <ReportSection id="severity-methodology">
+            <SectionHeader num={3}>Severity Methodology</SectionHeader>
+
+            <p style={{ fontSize: 13, color: MUTED, margin: "0 0 16px 0", lineHeight: 1.7 }}>
+              Severity in this report reflects potential impact to protocol continuity, fund safety,
+              and operational control — not confirmed exploitation. Findings represent authority
+              surfaces requiring verification. Severity may be revised downward once evidence is
+              provided and verified.
+            </p>
+
+            <div style={{ display: "grid", gap: 8, marginBottom: 16 }}>
+              {([
+                { sev: "critical" as AdminFindingSeverity, color: "#EF4444", desc: "Direct fund movement, settlement, or custody authority with no timelock or multisig protection. Immediate risk to assets or protocol operation." },
+                { sev: "high" as AdminFindingSeverity, color: "#F97316", desc: "Significant authority surface — upgrade control, oracle authority, or admin role concentration — where verification evidence is absent or incomplete. Blast radius is large; unverified control paths." },
+                { sev: "medium" as AdminFindingSeverity, color: "#EAB308", desc: "Authority surface with limited or indirect fund impact, or where partial mitigations exist. Verification recommended to confirm continuity posture." },
+                { sev: "low" as AdminFindingSeverity, color: "#22C55E", desc: "Informational or structural finding. Low direct risk but relevant to continuity planning, role documentation, and future audits." },
+              ]).map(({ sev, color, desc }) => (
+                <div
+                  key={sev}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 12,
+                    padding: "8px 12px",
+                    background: `${color}08`,
+                    border: `1px solid ${color}22`,
+                    borderRadius: 5,
+                  }}
+                >
+                  <Pill label={sev} color={color} />
+                  <span style={{ fontSize: 12, color: MUTED, lineHeight: 1.6 }}>{desc}</span>
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                padding: "8px 12px",
+                background: "rgba(148,163,184,0.04)",
+                borderLeft: "2px solid rgba(148,163,184,0.2)",
+                fontSize: 11,
+                color: SUBTLE,
+                lineHeight: 1.6,
+              }}
+            >
+              High-severity findings represent unverified authority surfaces — not confirmed vulnerabilities.
+              Many findings reflect missing evidence rather than confirmed risk. Likelihood and verification
+              confidence are factored into severity assignment.
+            </div>
+          </ReportSection>
+
+          {/* ═══════════════════════════════════════════════════════════ */}
           {/* AUTHORITY FINDINGS                                          */}
           {/* ═══════════════════════════════════════════════════════════ */}
-          <ReportSection id="authority-findings">
-            <SectionHeader>Authority Risk Findings</SectionHeader>
+          <ReportSection id="authority-findings" breakBefore>
+            <SectionHeader num={4}>Authority Risk Findings</SectionHeader>
 
             {findingsBySeverity.length === 0 ? (
               <EmptyState text="No open authority risk findings recorded. Run the Admin Surface Scan to identify findings." />
@@ -972,7 +1290,9 @@ export default function DefenseReviewReportPage() {
                         marginTop: 4,
                       }}
                     >
-                      {sev.toUpperCase()} ({items.length})
+                      {sev === "high"
+                        ? `HIGH-RISK AUTHORITY SURFACES REQUIRING VERIFICATION (${items.length})`
+                        : `${sev.toUpperCase()} (${items.length})`}
                     </div>
                     {items.map((f) => (
                       <FindingRow key={f.id} finding={f} />
@@ -986,8 +1306,8 @@ export default function DefenseReviewReportPage() {
           {/* ═══════════════════════════════════════════════════════════ */}
           {/* RELEVANT THREAT FAMILIES                                   */}
           {/* ═══════════════════════════════════════════════════════════ */}
-          <ReportSection id="threat-families">
-            <SectionHeader>Relevant Threat Families</SectionHeader>
+          <ReportSection id="threat-families" breakBefore>
+            <SectionHeader num={5}>Relevant Threat Families</SectionHeader>
 
             {!relevance || relevance.relevantThreatFamilies.length === 0 ? (
               <EmptyState text="No relevant threat families mapped yet. Run the Admin Surface Scan and ensure findings are present to generate threat relevance." />
@@ -1016,7 +1336,7 @@ export default function DefenseReviewReportPage() {
                         {tf.threatFamily}
                       </span>
                       <span style={{ fontSize: 11, color: SUBTLE, whiteSpace: "nowrap" }}>
-                        Relevance {tf.relevanceScore}
+                        Project relevance {tf.relevanceScore}
                       </span>
                     </div>
                     {tf.whyItMatters && (
@@ -1031,12 +1351,22 @@ export default function DefenseReviewReportPage() {
                         fontSize: 11,
                         color: SUBTLE,
                         flexWrap: "wrap",
+                        marginBottom: tf.globalCaseCount === 0 ? 4 : 0,
                       }}
                     >
-                      <span>Global cases: <strong style={{ color: TEXT }}>{tf.globalCaseCount}</strong></span>
-                      <span>Critical: <strong style={{ color: tf.criticalCount > 0 ? "#EF4444" : TEXT }}>{tf.criticalCount}</strong></span>
+                      {tf.globalCaseCount === 0 ? (
+                        <span>Global coverage: <strong style={{ color: SUBTLE, fontStyle: "italic" }}>Pending</strong></span>
+                      ) : (
+                        <span>Global cases: <strong style={{ color: TEXT }}>{tf.globalCaseCount}</strong></span>
+                      )}
+                      <span>Critical (global): <strong style={{ color: tf.criticalCount > 0 ? "#EF4444" : TEXT }}>{tf.criticalCount}</strong></span>
                       <span>Replay validated: <strong style={{ color: TEXT }}>{tf.replayValidatedCount}</strong></span>
                     </div>
+                    {tf.globalCaseCount === 0 && (
+                      <div style={{ fontSize: 11, color: SUBTLE, fontStyle: "italic", marginBottom: 6 }}>
+                        Global case coverage pending — relevance is based on project authority surface match, not global case history.
+                      </div>
+                    )}
                     {tf.topRecommendedActions.length > 0 && (
                       <div style={{ marginTop: 8 }}>
                         <div style={{ fontSize: 10, color: SUBTLE, letterSpacing: "0.08em", marginBottom: 4 }}>
@@ -1060,8 +1390,8 @@ export default function DefenseReviewReportPage() {
           {/* ═══════════════════════════════════════════════════════════ */}
           {/* RECOMMENDED CONTROLS                                        */}
           {/* ═══════════════════════════════════════════════════════════ */}
-          <ReportSection id="recommended-controls">
-            <SectionHeader>Recommended Controls</SectionHeader>
+          <ReportSection id="recommended-controls" breakBefore>
+            <SectionHeader num={6}>Recommended Controls</SectionHeader>
 
             {controls.length === 0 ? (
               <EmptyState text="No controls generated. Generate controls from authority findings in the Project Map Controls tab." />
@@ -1082,7 +1412,11 @@ export default function DefenseReviewReportPage() {
                       {CONTROL_STATUS_LABEL[st].toUpperCase()} ({items.length})
                     </div>
                     {items.map((c) => (
-                      <ControlRow key={c.id} control={c} />
+                      <ControlRow
+                        key={c.id}
+                        control={c}
+                        displayTitle={resolveControlTitle(c, assets, findings, titleCounts)}
+                      />
                     ))}
                   </div>
                 ))}
@@ -1099,7 +1433,7 @@ export default function DefenseReviewReportPage() {
           {/* VERIFICATION STATUS                                         */}
           {/* ═══════════════════════════════════════════════════════════ */}
           <ReportSection id="verification-status">
-            <SectionHeader>Verification Status</SectionHeader>
+            <SectionHeader num={7}>Verification Status</SectionHeader>
 
             <div
               style={{
@@ -1137,21 +1471,21 @@ export default function DefenseReviewReportPage() {
             >
               {isDefended ? (
                 <>
-                  All generated controls are verified for current project metadata. This project
+                  All generated evidence and control checks are verified for current project metadata. This project
                   meets the SCE <em>Defended</em> threshold for the mapped surface.
                 </>
               ) : controls.length === 0 ? (
                 <>
-                  Controls have not been generated yet.{" "}
+                  Evidence and control checks have not been generated yet.{" "}
                   <strong style={{ color: TEXT }}>
-                    "Defended" status applies only after controls are generated and verified.
+                    "Defended" status applies only after checks are generated and verified.
                   </strong>
                 </>
               ) : (
                 <>
-                  {verifiedControls.length} of {controls.length} controls verified ({controlCoverage}% coverage).{" "}
+                  {verifiedControls.length} of {controls.length} evidence and control checks verified ({controlCoverage}% coverage).{" "}
                   <strong style={{ color: TEXT }}>
-                    "Defended" status applies only when all controls are verified against current
+                    "Defended" status applies only when all checks are verified against current
                     project metadata and evidence.
                   </strong>
                 </>
@@ -1163,7 +1497,7 @@ export default function DefenseReviewReportPage() {
           {/* NEXT ACTIONS                                                */}
           {/* ═══════════════════════════════════════════════════════════ */}
           <ReportSection id="next-actions">
-            <SectionHeader>Next Actions</SectionHeader>
+            <SectionHeader num={8}>Next Actions</SectionHeader>
             <ol
               style={{
                 margin: 0,
@@ -1185,19 +1519,41 @@ export default function DefenseReviewReportPage() {
             style={{
               borderTop: `1px solid ${SEP}`,
               paddingTop: 16,
-              fontSize: 11,
-              color: SUBTLE,
-              display: "grid",
-              gridTemplateColumns: "1fr auto",
-              gap: 8,
+              marginTop: 8,
             }}
           >
-            <span>
-              SCE Public-Surface Review — {review.projectName} — {fmtDate(review.updatedAt)}
-            </span>
-            <span>
-              Report: {REPORT_STATUS_LABEL[review.reportStatus] ?? review.reportStatus}
-            </span>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto",
+                gap: 8,
+                fontSize: 11,
+                color: SUBTLE,
+                marginBottom: 10,
+              }}
+            >
+              <span>
+                SCE Public-Surface Defense Review · {review.projectName} · {fmtDate(review.updatedAt)}
+              </span>
+              <span>Report Status: {REPORT_STATUS_LABEL[review.reportStatus] ?? review.reportStatus}</span>
+            </div>
+            <div
+              style={{
+                fontSize: 10,
+                color: `${SUBTLE}99`,
+                lineHeight: 1.6,
+                borderTop: `1px solid ${SEP}`,
+                paddingTop: 10,
+              }}
+            >
+              <strong style={{ color: SUBTLE, letterSpacing: "0.06em" }}>CONFIDENTIAL.</strong>{" "}
+              This report is prepared solely for the addressee and is intended only for the
+              internal use of the recipient. The findings and recommendations contained herein
+              are based on publicly available information and represent SCE&apos;s analysis as
+              of the date of issue. SCE does not hold custody of any project assets, private
+              keys, or signing credentials. Distribution or reproduction of this report without
+              written consent from Sagitta Continuity Engine (SCE) is prohibited.
+            </div>
           </div>
 
           {/* ── Bottom nav (no-print) ─────────────────────────────── */}
@@ -1206,9 +1562,9 @@ export default function DefenseReviewReportPage() {
             style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 24 }}
           >
             <NavChip href={`/dashboard/defense-review/${review.id}`} label="← Defense Review" />
-            <NavChip href="/dashboard/project-map" label="Project Map" />
-            <NavChip href="/dashboard/project-map" label="View Controls" />
-            <NavChip href="/dashboard/threat-matrix" label="View Relevant Threats" />
+            <NavChip href={`/dashboard/project-map?project=${review.projectId}`} label="Project Map" />
+            <NavChip href={`/dashboard/project-map?project=${review.projectId}&tab=controls`} label="Controls" />
+            <NavChip href="/dashboard/threat-matrix" label="Threat Matrix" />
           </div>
         </div>
       </div>
@@ -1261,6 +1617,10 @@ function FindingRow({ finding }: { finding: AdminSurfaceFinding }) {
   const evidenceRequired = _reportEvidenceRequired(finding);
   const remediation = _reportRemediation(finding);
   const isRoleAware = evidenceRequired.length > 0 || !!remediation;
+  const assetAddr = finding.evidence?.assetAddress as string | undefined;
+  const adminAddr = finding.evidence?.adminAddress as string | undefined;
+  const role = finding.evidence?.role as string | undefined;
+
   return (
     <div
       style={{
@@ -1279,10 +1639,32 @@ function FindingRow({ finding }: { finding: AdminSurfaceFinding }) {
       <p style={{ margin: "0 0 6px 0", fontSize: 12, color: MUTED, lineHeight: 1.5 }}>
         {finding.summary}
       </p>
+
+      {/* Current evidence status */}
+      <div style={{ marginBottom: 6 }}>
+        <div style={{ fontSize: 10, color: MUTED, letterSpacing: "0.08em", marginBottom: 3 }}>
+          CURRENT EVIDENCE STATUS
+        </div>
+        <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 1 }}>
+          <li style={{ fontSize: 11, color: SUBTLE, lineHeight: 1.5 }}>
+            Source: Submitted project metadata + scanner analysis
+          </li>
+          <li style={{ fontSize: 11, color: SUBTLE, lineHeight: 1.5 }}>
+            Contract address: {assetAddr ?? <em>Not provided</em>}
+          </li>
+          <li style={{ fontSize: 11, color: SUBTLE, lineHeight: 1.5 }}>
+            Admin/Owner: {adminAddr ?? <em>Not detected</em>}
+          </li>
+          {role && (
+            <li style={{ fontSize: 11, color: SUBTLE, lineHeight: 1.5 }}>Role: {role}</li>
+          )}
+        </ul>
+      </div>
+
       {isRoleAware ? (
         <>
           {evidenceRequired.length > 0 && (
-            <div style={{ marginTop: 6, marginBottom: 4 }}>
+            <div style={{ marginTop: 4, marginBottom: 4 }}>
               <div style={{ fontSize: 10, color: MUTED, letterSpacing: "0.08em", marginBottom: 4 }}>EVIDENCE REQUIRED</div>
               <ul style={{ margin: 0, paddingLeft: 16 }}>
                 {evidenceRequired.map((item, i) => (
@@ -1313,7 +1695,7 @@ function FindingRow({ finding }: { finding: AdminSurfaceFinding }) {
   );
 }
 
-function ControlRow({ control }: { control: ProjectControl }) {
+function ControlRow({ control, displayTitle }: { control: ProjectControl; displayTitle: string }) {
   const color = CONTROL_STATUS_COLOR[control.status];
   const hasEvidence = Object.keys(control.evidence ?? {}).length > 0;
   const verificationDate = control.verifiedAt
@@ -1333,7 +1715,7 @@ function ControlRow({ control }: { control: ProjectControl }) {
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Pill label={CONTROL_STATUS_LABEL[control.status]} color={color} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>{control.title}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>{displayTitle}</span>
       </div>
       <p style={{ margin: 0, fontSize: 12, color: MUTED, lineHeight: 1.5 }}>
         {control.description}

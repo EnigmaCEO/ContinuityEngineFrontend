@@ -382,4 +382,5 @@ export interface IncidentsOverviewResponse {
   replay_validated_incidents:         number;
   incidents_with_response_coverage:   number;
   recent_incidents:                   IncidentOverviewItem[];
+  critical_ticker_items:              IncidentOverviewItem[];
 }

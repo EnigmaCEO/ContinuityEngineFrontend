@@ -186,9 +186,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
-      <Sidebar me={effectiveMe} />
+    <div id="dashboard-shell-root" style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+      <div className="dashboard-chrome">
+        <Sidebar me={effectiveMe} />
+      </div>
       <div
+        id="dashboard-main-content"
         style={{
           flex: 1,
           overflowY: "auto",
@@ -199,6 +202,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         }}
       >
         <div
+          className="dashboard-chrome"
           style={{
             position: "sticky",
             top: 0,
@@ -288,6 +292,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
         {activePreviewRole ? (
           <div
+            className="dashboard-chrome"
             style={{
               borderBottom: "1px solid rgba(245,158,11,0.26)",
               background: "rgba(245,158,11,0.12)",
@@ -324,7 +329,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           {content}
         </SessionProvider>
       </div>
-      <RightPanel me={effectiveMe} />
+      <div className="dashboard-chrome">
+        <RightPanel me={effectiveMe} />
+      </div>
     </div>
   );
 }
