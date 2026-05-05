@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "${API_BASE}";
+
 type ScenarioType = "stablecoin_depeg" | "oracle_stale" | "chain_halt";
 
 type AuditStatus = "local" | "exported" | "failed";
@@ -45,13 +47,13 @@ export default function DecisionsPage() {
   const [verifying, setVerifying] = useState<Record<string, boolean>>({});
 
   const fetchDecisions = () => {
-    fetch("http://127.0.0.1:8000/decisions")
+    fetch(`${API_BASE}/decisions`)
       .then(res => res.json())
       .then(data => setDecisions(data));
   };
 
   const fetchStatus = () => {
-    fetch("http://127.0.0.1:8000/monitors/status")
+    fetch(`${API_BASE}/monitors/status`)
       .then(res => res.json())
       .then(data => setStatus(data));
   };
@@ -72,7 +74,7 @@ export default function DecisionsPage() {
     setVerifying((v) => ({ ...v, [decisionId]: true }));
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/audit/verify/${decisionId}`,
+        `${API_BASE}/audit/verify/${decisionId}`,
         { method: "POST" }
       );
       const data: VerificationResult = await res.json();
@@ -83,7 +85,7 @@ export default function DecisionsPage() {
   };
 
   const runScenario = async () => {
-    await fetch("http://127.0.0.1:8000/scenarios/run", {
+    await fetch(`${API_BASE}/scenarios/run`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -138,7 +140,7 @@ export default function DecisionsPage() {
         </button>
         <br />
         <button onClick={async () => {
-        await fetch("http://127.0.0.1:8000/monitors/tick", {
+        await fetch(`${API_BASE}/monitors/tick`, {
             method: "POST",
         });
         fetchDecisions();
