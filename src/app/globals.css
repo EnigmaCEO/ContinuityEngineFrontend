@@ -74,6 +74,17 @@ body {
   }
 }
 
+/* iPad Pro 1024px: compress nav links and outer padding to prevent overflow */
+@media (max-width: 1100px) {
+  .nav-bar {
+    padding: 0 20px !important;
+  }
+  .nav-links a {
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+  }
+}
+
 /* Portrait tablets (iPad Pro 1027×1366 etc): cap hero height to avoid dead space */
 @media (min-width: 901px) and (max-width: 1150px) {
   .hero-section {
