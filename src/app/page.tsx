@@ -211,7 +211,7 @@ export default function HomePage() {
 
             {/* CTAs */}
             <div className="hero-ctas" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 32 }}>
-              <a href="#defense-review" className="hero-cta-btn" style={{
+              <a href="#first-service-door" className="hero-cta-btn" style={{
                 padding: "14px 24px",
                 borderRadius: 8,
                 background: GOLD,
