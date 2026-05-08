@@ -87,14 +87,16 @@ Login is email-based (no password). On success the API returns a session token s
 
 ## API
 
-All service files point to `http://127.0.0.1:8000`. To change the backend URL, update the base URL constants in:
+Service files use `NEXT_PUBLIC_API_URL` when set and otherwise default to `http://127.0.0.1:8000`.
 
-- `src/lib/saas/service.ts`
-- `src/lib/defense-review/service.ts`
-- `src/lib/project-map/service.ts`
-- `src/lib/case-library/service.ts`
+Production dashboard mutations that require backend admin authorization are routed through Next API handlers so the admin key is never exposed to the browser. Configure the web service with:
 
-There are currently no `NEXT_PUBLIC_` environment variables. If you need to make the API URL configurable, introduce `NEXT_PUBLIC_API_URL` and reference it in those files.
+```bash
+NEXT_PUBLIC_API_URL=https://your-api-domain.com
+SCE_ADMIN_API_KEY=<same strong secret configured on the API service>
+```
+
+Do not use a `NEXT_PUBLIC_` prefix for `SCE_ADMIN_API_KEY`.
 
 ## Path aliases
 

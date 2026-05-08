@@ -21,6 +21,7 @@ import { applyTableParams } from './selectors';
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000';
+const SESSION_STORAGE_KEY = 'sce_session_token';
 
 // Set to true to use local mock data instead of the real backend.
 const USE_MOCK = false;
@@ -37,6 +38,22 @@ async function fetchJsonWithDashboardLog<T>(url: string, init?: RequestInit): Pr
   );
   if (!response.ok) throw new Error(`dashboard fetch failed: ${response.status}`);
   return JSON.parse(text) as T;
+}
+
+function getSessionToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem(SESSION_STORAGE_KEY);
+}
+
+async function errorMessage(response: Response, fallback: string): Promise<string> {
+  const text = await response.text().catch(() => '');
+  if (!text) return `${fallback}: ${response.status}`;
+  try {
+    const body = JSON.parse(text) as { error?: string; detail?: string };
+    return body.error ?? body.detail ?? `${fallback}: ${response.status}`;
+  } catch {
+    return text;
+  }
 }
 
 // ─── Summary ──────────────────────────────────────────────────────────────────
@@ -134,9 +151,13 @@ export async function triggerSync(): Promise<SourceSyncResult | void> {
     await delay(900);
     return;
   }
-  const res = await fetch(`${API_BASE}/case-library/sync-sources`, {
+  const sessionToken = getSessionToken();
+  const res = await fetch('/api/case-library/sync-sources', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(sessionToken ? { 'X-SCE-Session': sessionToken } : {}),
+    },
     body: JSON.stringify({
       sourceTypes:          ['cisa_kev', 'nvd_cve', 'github_advisories', 'defi_rekt'],
       autoNormalize:        true,
@@ -147,7 +168,7 @@ export async function triggerSync(): Promise<SourceSyncResult | void> {
       maxResultsPerSource:  100,
     }),
   });
-  if (!res.ok) throw new Error(`sync failed: ${res.status}`);
+  if (!res.ok) throw new Error(await errorMessage(res, 'Sync Sources failed'));
   return res.json() as Promise<SourceSyncResult>;
 }
 
