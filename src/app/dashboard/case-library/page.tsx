@@ -706,7 +706,7 @@ export default function CaseLibraryPage() {
                 </span>
               </div>
               <p style={{ fontSize: 10.5, color: "rgba(148,163,184,0.75)", margin: 0, lineHeight: "1.5" }}>
-              Highest-severity vulnerabilities and incidents prioritized for replay validation, doctrine coverage, and operator review.
+              Highest-severity vulnerabilities and incidents prioritized for case-indexed coverage, doctrine coverage, and operator review.
               </p>
             </div>
 

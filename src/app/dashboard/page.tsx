@@ -159,7 +159,7 @@ function formatRelativeTime(value: string | null | undefined): string {
 }
 
 function replayStatusForCase(caseItem: DashboardCriticalCase): { label: string; color: string } {
-  if (caseItem.replayStatus === "passed") return { label: "REPLAY VALIDATED", color: "#22C55E" };
+  if (caseItem.replayStatus === "passed") return { label: "CASE INDEXED", color: "#22C55E" };
   if (caseItem.replayEligibility === true) return { label: "REPLAYABLE", color: GOLD };
   if (caseItem.replayEligibility === false) return { label: "NOT REPLAYABLE", color: "rgba(148,163,184,0.85)" };
   return { label: "REPLAY MISSING", color: "#EF4444" };
@@ -824,7 +824,7 @@ export default function DashboardPage() {
                     <span style={{ fontSize: 10.5, fontWeight: 600, color: TEXT }}>{formatCount(doctrine.data.totalDoctrineCoveredCases)}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    <span style={{ fontSize: 9.5, color: MUTED }}>Replay validated</span>
+                    <span style={{ fontSize: 9.5, color: MUTED }}>Cases catalogued</span>
                     <span style={{ fontSize: 10.5, fontWeight: 600, color: "#22C55E" }}>{formatCount(doctrine.data.totalReplayedDoctrineCases)}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
@@ -927,7 +927,7 @@ export default function DashboardPage() {
                   { label: "TOTAL INCIDENTS", value: incidentData.total_incidents, color: TEXT },
                   { label: "CRITICAL", value: incidentData.critical_incidents, color: "#EF4444" },
                   { label: "AWAITING REPLAY", value: incidentData.incidents_awaiting_replay, color: GOLD },
-                  { label: "REPLAY VALIDATED", value: incidentData.replay_validated_incidents, color: "#22C55E" },
+                  { label: "CASE INDEXED", value: incidentData.replay_validated_incidents, color: "#22C55E" },
                   { label: "RESPONSE COVERAGE", value: incidentData.incidents_with_response_coverage, color: "#3B82F6" },
                 ].map((item) => (
                   <div
@@ -1008,7 +1008,7 @@ export default function DashboardPage() {
                   { label: "CRITICAL", value: formatCount(criticalIntel.data?.criticalCount), color: "#EF4444" },
                   { label: "HIGH", value: formatCount(criticalIntel.data?.highCount), color: "#F97316" },
                   { label: "REPLAYABLE", value: formatCount(criticalIntel.data?.replayableCount), color: GOLD },
-                  { label: "REPLAY VALIDATED %", value: formatPct(criticalIntel.data?.defenseReadinessPct), color: "#22C55E" },
+                  { label: "CASE-INDEXED %", value: formatPct(criticalIntel.data?.defenseReadinessPct), color: "#22C55E" },
                   { label: "TOP THREAT", value: criticalIntel.data?.topThreatFamily ?? "Unavailable", color: TEXT },
                 ].map((item) => (
                   <div

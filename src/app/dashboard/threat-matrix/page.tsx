@@ -80,7 +80,7 @@ export default function ThreatMatrixPage() {
               </span>
             </div>
             <p style={{ margin: "4px 0 0", color: "rgba(226,232,240,0.72)", fontSize: 12 }}>
-              Global threat families derived from case intelligence, doctrine coverage, and replay validation.
+              Global threat families derived from case intelligence, doctrine coverage, and case-indexed coverage.
             </p>
           </div>
         </div>

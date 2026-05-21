@@ -87,7 +87,7 @@ export default function TickerClient() {
             whiteSpace: "nowrap",
           }}
         >
-          LIVE CRITICAL INCIDENTS
+          RECENT CRITICAL INCIDENTS
         </span>
       </div>
 

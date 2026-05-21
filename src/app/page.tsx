@@ -251,7 +251,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Live Incidents Ticker — pinned to bottom of hero, always above fold */}
+        {/* Recent incidents ticker pinned to bottom of hero, always above fold */}
         <TickerClient />
 
       </section>
@@ -1071,7 +1071,7 @@ export default function HomePage() {
                   border: "1px solid rgba(34,197,94,0.2)",
                 }}>
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", display: "inline-block", flexShrink: 0 }} />
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#22c55e", letterSpacing: "0.06em" }}>LIVE</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#22c55e", letterSpacing: "0.06em" }}>ACTIVE</span>
                 </div>
               </div>
 

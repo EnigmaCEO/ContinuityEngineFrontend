@@ -11,7 +11,7 @@ import { fetchCase } from "@/lib/case-library/service";
 import { CLR, doctrineColor, formatTs } from "@/lib/case-library/utils";
 
 function replayLabel(status?: ReplayStatus): string {
-  if (status === "passed") return "Replay Validated";
+  if (status === "passed") return "Case Indexed";
   if (status === "failed") return "Replay Failed";
   return "Replay Pending";
 }

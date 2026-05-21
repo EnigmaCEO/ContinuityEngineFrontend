@@ -1,4 +1,5 @@
 export type DefenseReviewStatus = "draft" | "in_review" | "report_ready" | "delivered" | "closed";
+export type ScanStatus = "not_run" | "running" | "complete" | "partial" | "error";
 
 export interface DefenseReview {
   id: string;
@@ -17,6 +18,21 @@ export interface DefenseReview {
   verifiedControlsCount: number;
   reportStatus: string;
   notes?: string | null;
+  scanStatus: ScanStatus;
+  lastScanAt?: string | null;
+  scanChainsConfigured: number[];
+  scanChainsUnconfigured: number[];
+  scanNotes?: string | null;
+  detectorRunCount: number;
+}
+
+export interface RunScanResponse {
+  review: DefenseReview;
+  findingsCreated: number;
+  detectorsRan: number;
+  chainsConfigured: number[];
+  chainsUnconfigured: number[];
+  rpcSources: Record<string, string>;
 }
 
 export interface DefenseReviewsResponse {

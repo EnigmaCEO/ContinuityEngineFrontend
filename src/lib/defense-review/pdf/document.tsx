@@ -55,6 +55,9 @@ const FINDING_LABEL: Partial<Record<AdminFindingType, string>> = {
   unknown_admin: "Unknown Admin",
   multisig_detected: "Multisig Detected",
   timelock_detected: "Timelock Detected",
+  owner_detected: "Owner Detected",
+  access_control_detected: "AccessControl Detected",
+  oracle_feed_detected: "Oracle Feed Detected",
   treasury_movement_authority: "Treasury Movement Authority",
   treasury_allocation_authority: "Treasury Allocation Authority",
   treasury_emergency_freeze: "Treasury Emergency Freeze",
@@ -103,6 +106,212 @@ function fmtDateShort(v?: string | null): string {
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+const CHAIN_LABELS: Record<number, string> = {
+  1: "Ethereum",
+  10: "Optimism",
+  56: "BNB Chain",
+  137: "Polygon",
+  8453: "Base",
+  1287: "Moonbase Alpha",
+  42161: "Arbitrum",
+  43114: "Avalanche",
+  11155111: "Sepolia",
+};
+
+const AUTHORITY_DETECTOR_ATTEMPTS = "Ownable, EIP-1967, Safe, Timelock, AccessControl";
+const CONTROL_GROUP_ORDER = ["treasury", "vault", "escrow", "reserve", "oracle", "general"] as const;
+type ControlGroupKey = typeof CONTROL_GROUP_ORDER[number];
+
+const CONTROL_GROUP_LABELS: Record<ControlGroupKey, string> = {
+  treasury: "Treasury controls",
+  vault: "Vault controls",
+  escrow: "Escrow controls",
+  reserve: "Reserve controls",
+  oracle: "Oracle controls",
+  general: "General controls",
+};
+
+function scanStatusLabel(status?: string | null): string {
+  if (!status || status === "not_run") return "Not available";
+  if (status === "partial") return "Partial - retry recommended";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function chainListLabel(chains?: number[]): string {
+  if (!chains || chains.length === 0) return "Not available";
+  return chains.map((chain) => CHAIN_LABELS[chain] ?? String(chain)).join(", ");
+}
+
+function hasScanMetadata(review: DefenseReview): boolean {
+  return Boolean(
+    review.lastScanAt
+    || review.scanStatus !== "not_run"
+    || review.scanChainsConfigured.length > 0
+    || review.scanChainsUnconfigured.length > 0
+    || review.scanNotes
+    || review.detectorRunCount > 0,
+  );
+}
+
+function normalizeControlRole(value?: string | null): ControlGroupKey | null {
+  if (!value) return null;
+  const normalized = value.toLowerCase().replace(/[-_\s]/g, "");
+  if (normalized === "treasury") return "treasury";
+  if (normalized === "vault") return "vault";
+  if (normalized === "escrow") return "escrow";
+  if (normalized === "reserve") return "reserve";
+  if (["oracle", "goldoracle", "pricefeed", "priceoracle"].includes(normalized)) return "oracle";
+  return null;
+}
+
+function roleForAsset(asset?: ProjectAsset): ControlGroupKey | null {
+  if (!asset) return null;
+  const metadataRole = typeof asset.metadata?.role === "string" ? asset.metadata.role : undefined;
+  return normalizeControlRole(metadataRole) ?? normalizeControlRole(asset.name) ?? normalizeControlRole(asset.assetType);
+}
+
+function roleForControl(
+  control: ProjectControl,
+  assets: ProjectAsset[],
+  findings: AdminSurfaceFinding[],
+): ControlGroupKey {
+  const directAsset = control.assetId ? assets.find((asset) => asset.id === control.assetId) : undefined;
+  const finding = control.findingId ? findings.find((item) => item.id === control.findingId) : undefined;
+  const findingAsset = finding?.assetId ? assets.find((asset) => asset.id === finding.assetId) : undefined;
+  const evidenceRole = typeof finding?.evidence?.role === "string" ? finding.evidence.role : undefined;
+  return (
+    roleForAsset(directAsset)
+    ?? roleForAsset(findingAsset)
+    ?? normalizeControlRole(evidenceRole)
+    ?? normalizeControlRole(control.sourceFindingType ?? undefined)
+    ?? normalizeControlRole(control.controlKey)
+    ?? normalizeControlRole(control.title)
+    ?? "general"
+  );
+}
+
+function buildControlGroups(
+  controls: ProjectControl[],
+  assets: ProjectAsset[],
+  findings: AdminSurfaceFinding[],
+): Array<{ key: ControlGroupKey; label: string; items: ProjectControl[] }> {
+  const buckets = new Map<ControlGroupKey, ProjectControl[]>();
+  CONTROL_GROUP_ORDER.forEach((key) => buckets.set(key, []));
+  controls.forEach((control) => {
+    buckets.get(roleForControl(control, assets, findings))?.push(control);
+  });
+  return CONTROL_GROUP_ORDER
+    .map((key) => ({ key, label: CONTROL_GROUP_LABELS[key], items: buckets.get(key) ?? [] }))
+    .filter((group) => group.items.length > 0);
+}
+
+function evidenceAssetNames(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === "string") return item;
+      if (item && typeof item === "object") {
+        const record = item as Record<string, unknown>;
+        return typeof record.asset_name === "string"
+          ? record.asset_name
+          : typeof record.name === "string"
+            ? record.name
+            : undefined;
+      }
+      return undefined;
+    })
+    .filter((item): item is string => typeof item === "string" && item.length > 0);
+}
+
+function assetRoleLabel(asset: ProjectAsset): string {
+  const metadataRole = asset.metadata?.role;
+  if (typeof metadataRole === "string" && metadataRole.trim().length > 0) {
+    return metadataRole.trim().toLowerCase();
+  }
+  const normalizedName = asset.name.trim().toLowerCase();
+  if (["treasury", "vault", "escrow", "reserve"].includes(normalizedName)) return normalizedName;
+  if (normalizedName.includes("oracle")) return "oracle";
+  return asset.assetType;
+}
+
+function mappedOwnerDisplay(
+  asset: ProjectAsset,
+  resolvedOwnerFindings: AdminSurfaceFinding[],
+  unresolvedOwnerFindings: AdminSurfaceFinding[],
+): string {
+  const resolved = resolvedOwnerFindings.find((finding) => finding.assetId === asset.id);
+  const owner = (resolved?.evidence as Record<string, unknown> | undefined)?.adminAddress;
+  if (typeof owner === "string" && owner.length > 0) {
+    return `${owner} (resolved via Ownable.owner)`;
+  }
+  if (unresolvedOwnerFindings.some((finding) => finding.assetId === asset.id)) {
+    return "Unresolved";
+  }
+  const ownerType = asset.metadata?.ownerType;
+  if (typeof ownerType === "string" && ownerType.length > 0 && ownerType !== "Unknown") {
+    return ownerType;
+  }
+  return "Unresolved";
+}
+
+function findingDisplayOrder(finding: AdminSurfaceFinding): number {
+  if (finding.findingType === "role_concentration") return 0;
+  if (finding.findingType === "unknown_admin") return 1;
+  if (finding.findingType === "owner_detected") return 2;
+  return 3;
+}
+
+function whatThisMeansCopy(
+  review: DefenseReview,
+  opts: {
+    resolvedCount: number;
+    unresolvedCount: number;
+    totalAssets: number;
+    resolvedAssetNames: string[];
+    unresolvedAssetNames: string[];
+    sharedOwnerAddr: string | undefined;
+    sharedOwnerAssetCount: number;
+  },
+): string {
+  const { resolvedCount, unresolvedCount, totalAssets, resolvedAssetNames, unresolvedAssetNames, sharedOwnerAddr, sharedOwnerAssetCount } = opts;
+
+  if (review.scanStatus === "error" || review.scanStatus === "partial") {
+    return "SCE attempted standard public authority interface checks, but scan coverage was limited by RPC transport failures. Re-run the scan with a stable RPC endpoint or submit source/ABI and control evidence to complete authority-path verification.";
+  }
+
+  if (resolvedCount === 0 && unresolvedCount === 0) {
+    return `SCE scanned standard public authority interfaces for the mapped assets. No standard owner/admin/proxy/timelock paths resolved or were attempted for ${totalAssets} asset${totalAssets !== 1 ? "s" : ""}. Submit source/ABI or control evidence to advance verification.`;
+  }
+
+  const assetWord = totalAssets !== 1 ? "assets" : "asset";
+  const prefix = `SCE scanned standard public authority interfaces for ${totalAssets} mapped ${assetWord}.`;
+
+  if (resolvedCount > 0 && unresolvedCount === 0) {
+    const assetList = resolvedAssetNames.join(", ");
+    let copy = `${prefix} Public calls resolved Ownable owner paths for all ${resolvedCount} asset${resolvedCount !== 1 ? "s" : ""} — ${assetList}.`;
+    if (sharedOwnerAddr && sharedOwnerAssetCount >= 2) {
+      copy += ` All resolved assets share the same owner address: ${sharedOwnerAddr}. This shared owner path is the primary continuity finding. The resolved owner evidence does not prove a vulnerability. The next review gate is to confirm whether this address is an EOA, multisig, timelock, or governed contract.`;
+    }
+    return copy;
+  }
+
+  // Mix of resolved and unresolved
+  const assetList = resolvedAssetNames.join(", ");
+  const unresolvedList = unresolvedAssetNames.join(", ");
+
+  let copy = `${prefix} Public calls resolved Ownable owner paths for ${resolvedCount} asset${resolvedCount !== 1 ? "s" : ""} — ${assetList}`;
+  if (sharedOwnerAddr && sharedOwnerAssetCount >= 2) {
+    copy += ` — all to the same owner address: ${sharedOwnerAddr}. This shared owner path is the primary continuity finding in this review.`;
+  } else {
+    copy += ".";
+  }
+  if (unresolvedCount > 0) {
+    copy += ` ${unresolvedList} did not resolve through standard interfaces and require${unresolvedCount === 1 ? "s" : ""} source/ABI review or submitted control evidence.`;
+  }
+  copy += " The resolved owner evidence does not prove a vulnerability, and it does not verify that the owner is unsafe. It means the next review gate is to confirm whether the resolved address is an EOA, multisig, timelock, or governed contract.";
+  return copy;
 }
 
 function evidenceRequired(finding: AdminSurfaceFinding): string[] {
@@ -155,12 +364,27 @@ function resolveControlTitle(
 function buildNextActions(
   findings: AdminSurfaceFinding[],
   controls: ProjectControl[],
+  opts?: { sharedOwnerAddr?: string; unresolvedAssetNames?: string[] },
 ): string[] {
   const actions: string[] = [];
   const missing = controls.filter((c) => c.status === "missing");
   const unverified = controls.filter((c) => c.status !== "verified" && c.status !== "not_applicable");
   const verified = controls.filter((c) => c.status === "verified");
   const crit = findings.filter((f) => f.severity === "critical");
+
+  if (opts?.sharedOwnerAddr) {
+    const unresolvedList = opts.unresolvedAssetNames?.join(", ");
+    return [
+      `Confirm whether ${opts.sharedOwnerAddr} is an EOA, multisig, timelock, or governed contract.`,
+      "Provide signer policy, threshold, delay windows, and emergency procedure for the shared owner.",
+      unresolvedList
+        ? `Resolve ${unresolvedList} authority path through source/ABI review or submitted control evidence.`
+        : "Resolve remaining unresolved authority paths through source/ABI review or submitted control evidence.",
+      "Verify whether critical powers should remain concentrated or be split across multisigs, timelocks, or governed roles.",
+      "Submit supporting policy evidence and re-run SCE Admin Surface Scan.",
+      `Generate updated report with verified-control coverage. Current status: ${verified.length} of ${controls.length} evidence and control check${controls.length !== 1 ? "s" : ""} verified.`,
+    ];
+  }
 
   const knownRoles = ["treasury", "vault", "escrow", "reserve", "oracle"];
   const affectedRoles = knownRoles.filter((r) =>
@@ -170,8 +394,19 @@ function buildNextActions(
     ? affectedRoles.join(", ")
     : "treasury, vault, escrow, reserve, and oracle";
 
+  if (opts?.sharedOwnerAddr) {
+    actions.push(`Confirm that ${opts.sharedOwnerAddr} is an EOA, multisig, timelock, or governed contract — this address controls the resolved authority paths and is the primary continuity risk.`);
+    actions.push("Provide the signer policy, threshold, delay windows, and emergency procedure for the shared owner address.");
+  }
+
+  if (opts?.unresolvedAssetNames && opts.unresolvedAssetNames.length > 0) {
+    const unresolvedList = opts.unresolvedAssetNames.join(", ");
+    actions.push(`Resolve authority paths for ${unresolvedList} — standard public interfaces did not return a valid owner or admin address.`);
+  }
+
   actions.push("Submit or confirm the mapped asset inventory — verify all contracts, proxies, oracles, and keepers are represented in the Project Map.");
-  actions.push("Provide admin/owner/multisig/timelock evidence for each mapped asset authority surface.");
+  actions.push("Submit source/ABI or admin/owner evidence for unresolved assets.");
+  actions.push("Provide multisig/timelock details where applicable, including signer policy, threshold, and delay windows.");
   actions.push(`Verify authority paths for: ${roleList}.`);
   actions.push("Document role separation and emergency procedures for each authority surface.");
 
@@ -201,7 +436,7 @@ function buildNextActions(
     `Generate updated report with verified-control coverage. Current status: ${verified.length} of ${controls.length} evidence and control check${controls.length !== 1 ? "s" : ""} verified.`,
   );
 
-  return actions;
+  return actions.slice(0, 6);
 }
 
 // ─── StyleSheet ───────────────────────────────────────────────────────────────
@@ -450,6 +685,20 @@ function CoverPage({ data }: { data: DefenseReviewReportData }) {
   const highCount = data.findings.filter((f) => f.severity === "high").length;
   const riskColor = critCount > 0 ? RED : highCount > 0 ? ORANGE : GREEN;
   const riskLabel = critCount > 0 ? "CRITICAL RISK" : highCount > 0 ? "HIGH RISK" : "UNDER REVIEW";
+  const isSampleReport = review.projectName.toLowerCase().includes("sagitta protocol");
+  const concentrationFinding = data.findings.find((f) => f.findingType === "role_concentration");
+  const concentrationEvidence = concentrationFinding?.evidence as Record<string, unknown> | undefined;
+  const concentrationNames = [
+    ...evidenceAssetNames(concentrationEvidence?.assetsAffected),
+    ...evidenceAssetNames(concentrationEvidence?.controlledAssets),
+  ].filter((name, index, all) => all.indexOf(name) === index);
+  const coverRiskLine = concentrationNames.length >= 2
+    ? `Shared owner concentration across ${concentrationNames.length} assets requires verification.`
+    : critCount > 0
+      ? `${critCount} critical authority surface${critCount > 1 ? "s" : ""} require immediate attention.`
+      : highCount > 0
+        ? `${highCount} high-risk authority surface${highCount > 1 ? "s" : ""} require verification.`
+        : `${data.findings.length} finding${data.findings.length !== 1 ? "s" : ""} recorded. Review in progress.`;
 
   return (
     <Page size="A4" style={S.coverPage}>
@@ -477,6 +726,17 @@ function CoverPage({ data }: { data: DefenseReviewReportData }) {
           PUBLIC-SURFACE DEFENSE REVIEW REPORT
         </Text>
 
+        {isSampleReport ? (
+          <View style={{ borderWidth: 1, borderColor: `${GOLD}66`, backgroundColor: "#14110A", padding: "10 12", marginBottom: 18 }}>
+            <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1.4, marginBottom: 4 }}>
+              SAMPLE — STRUCTURE DEMONSTRATION
+            </Text>
+            <Text style={{ fontSize: 8, color: MUTED }}>
+              Demo report using Sagitta Protocol testnet deployment. Not a verified client result.
+            </Text>
+          </View>
+        ) : null}
+
         {/* Gold accent line */}
         <View style={{ width: 56, height: 2, backgroundColor: GOLD, borderRadius: 1, marginBottom: 20 }} />
 
@@ -494,11 +754,7 @@ function CoverPage({ data }: { data: DefenseReviewReportData }) {
         <View style={[S.callout, { borderLeftWidth: 4, borderLeftColor: riskColor, backgroundColor: `${riskColor}0D`, borderRadius: 0, marginBottom: 28 }]}>
           <Text style={[S.calloutLabel, { color: riskColor }]}>RISK POSTURE — {riskLabel}</Text>
           <Text style={[S.calloutText, { fontSize: 9 }]}>
-            {critCount > 0
-              ? `${critCount} critical authority surface${critCount > 1 ? "s" : ""} require immediate attention.`
-              : highCount > 0
-                ? `${highCount} high-risk authority surface${highCount > 1 ? "s" : ""} require verification.`
-                : `${data.findings.length} finding${data.findings.length !== 1 ? "s" : ""} recorded. Review in progress.`}
+            {coverRiskLine}
           </Text>
         </View>
 
@@ -547,10 +803,11 @@ const TOC_ENTRIES = [
   { num: 2, title: "Review Scope" },
   { num: 3, title: "Severity Methodology" },
   { num: 4, title: "Authority Risk Findings" },
-  { num: 5, title: "Relevant Threat Families" },
-  { num: 6, title: "Recommended Controls" },
-  { num: 7, title: "Verification Status" },
-  { num: 8, title: "Next Actions" },
+  { num: 5, title: "What this means" },
+  { num: 6, title: "Relevant Threat Families" },
+  { num: 7, title: "Recommended Controls" },
+  { num: 8, title: "Verification Status" },
+  { num: 9, title: "Next Actions" },
 ];
 
 function TocPage({ data }: { data: DefenseReviewReportData }) {
@@ -602,6 +859,40 @@ function ContentPage({ data }: { data: DefenseReviewReportData }) {
   const verifiedControls = controls.filter((c) => c.status === "verified");
   const controlCoverage = controls.length > 0 ? Math.round((verifiedControls.length / controls.length) * 100) : 0;
   const isDefended = verifiedControls.length > 0 && controlCoverage === 100;
+  const authorityRoles = new Set(["treasury", "vault", "escrow", "reserve", "oracle"]);
+  // Resolved: owner_detected findings with verified confidence (on-chain owner observed)
+  const resolvedOwnerFindings = openFindings.filter(
+    (f) => f.findingType === "owner_detected" && (f.evidence as Record<string, unknown>)?.confidence === "verified",
+  );
+  // Unresolved: unknown_admin root authority findings for authority-role assets
+  const unresolvedOwnerFindings = openFindings.filter((f) => {
+    const role = (f.evidence as Record<string, unknown>)?.role;
+    return f.findingType === "unknown_admin" && typeof role === "string" && authorityRoles.has(role);
+  });
+  const authorityRootFindings = [...resolvedOwnerFindings, ...unresolvedOwnerFindings];
+  const authorityPathsResolved = resolvedOwnerFindings.length;
+  const authorityPathsAwaiting = unresolvedOwnerFindings.length;
+
+  // Scan aggregation: shared owner and asset name lists
+  const concentrationFinding = openFindings.find((f) => f.findingType === "role_concentration");
+  const sharedOwnerAddr = (concentrationFinding?.evidence as Record<string, unknown> | undefined)?.adminAddress as string | undefined;
+  const concentrationEvidence = concentrationFinding?.evidence as Record<string, unknown> | undefined;
+  const concentrationAssetNames = [
+    ...evidenceAssetNames(concentrationEvidence?.assetsAffected),
+    ...evidenceAssetNames(concentrationEvidence?.controlledAssets),
+  ].filter((name, index, all) => all.indexOf(name) === index);
+  const sharedOwnerAssetCount = concentrationAssetNames.length;
+  const primaryFindingText = concentrationAssetNames.length > 0
+    ? `Primary Finding: Shared owner concentration across ${concentrationAssetNames.join(", ")}`
+    : undefined;
+  const resolvedAssetNames = resolvedOwnerFindings.map((f) => {
+    const a = assets.find((asset) => asset.id === f.assetId);
+    return a?.name ?? "Unknown";
+  });
+  const unresolvedAssetNames = unresolvedOwnerFindings.map((f) => {
+    const a = assets.find((asset) => asset.id === f.assetId);
+    return a?.name ?? "Unknown";
+  });
 
   const activeAssets = assets.filter((a) => a.status !== "archived");
   const contractAssets = activeAssets.filter((a) => a.assetType === "contract" || a.assetType === "proxy");
@@ -610,10 +901,17 @@ function ContentPage({ data }: { data: DefenseReviewReportData }) {
     (a) => a.assetType !== "contract" && a.assetType !== "proxy" && a.assetType !== "frontend",
   );
 
-  const nextActions = buildNextActions(openFindings, controls);
+  const nextActions = buildNextActions(openFindings, controls, { sharedOwnerAddr, unresolvedAssetNames });
+  const scanMetadataAvailable = hasScanMetadata(review);
+  const scanStatusText = scanStatusLabel(review.scanStatus);
 
   const findingsBySev = (["critical", "high", "medium", "low"] as AdminFindingSeverity[])
-    .map((sev) => ({ sev, items: openFindings.filter((f) => f.severity === sev) }))
+    .map((sev) => ({
+      sev,
+      items: openFindings
+        .filter((f) => f.severity === sev)
+        .sort((a, b) => findingDisplayOrder(a) - findingDisplayOrder(b)),
+    }))
     .filter((g) => g.items.length > 0);
 
   // Build a title-count map to detect duplicates for asset-specific labeling
@@ -622,9 +920,7 @@ function ContentPage({ data }: { data: DefenseReviewReportData }) {
     titleCounts.set(c.title, (titleCounts.get(c.title) ?? 0) + 1);
   }
 
-  const controlsByStatus = (["missing", "planned", "implemented", "verified"] as ProjectControlStatus[])
-    .map((st) => ({ st, items: controls.filter((c) => c.status === st) }))
-    .filter((g) => g.items.length > 0);
+  const controlGroups = buildControlGroups(controls, assets, openFindings);
 
   const riskColor = critCount > 0 ? RED : highCount > 0 ? ORANGE : isDefended ? GREEN : GOLD;
   const riskLabel = critCount > 0 ? "CRITICAL RISK" : highCount > 0 ? "HIGH RISK" : isDefended ? "DEFENDED" : "UNDER REVIEW";
@@ -649,6 +945,9 @@ function ContentPage({ data }: { data: DefenseReviewReportData }) {
         <Text style={{ fontFamily: "Helvetica-Bold", color: TEXT }}>{review.projectName}</Text>{" "}
         conducted by Sagitta Continuity Engine (SCE). The analysis covers mapped public assets, authority risk findings derived from the Admin Surface Scanner, relevant global threat families, and recommended evidence and control checks. SCE does not control this project, hold keys, or execute on-chain transactions.
       </Text>
+      {primaryFindingText ? (
+        <Text style={[S.body, { fontFamily: "Helvetica-Bold", color: TEXT }]}>{primaryFindingText}</Text>
+      ) : null}
 
       {/* Risk posture callout */}
       <View style={[S.callout, { borderLeftWidth: 4, borderLeftColor: riskColor, backgroundColor: `${riskColor}0D`, borderRadius: 0, marginBottom: 14 }]}>
@@ -667,9 +966,36 @@ function ContentPage({ data }: { data: DefenseReviewReportData }) {
       <StatGrid stats={[
         { label: "Threat Families", value: relevance ? relevance.relevantThreatFamilies.length : review.relevantThreatFamiliesCount },
         { label: "Controls", value: controls.length },
-        { label: "Verified", value: `${verifiedControls.length} / ${controls.length}`, color: verifiedControls.length > 0 ? GREEN : TEXT },
+        { label: "Controls Verified", value: `${verifiedControls.length} / ${controls.length}`, color: verifiedControls.length > 0 ? GREEN : TEXT },
         { label: "Coverage", value: `${controlCoverage}%`, color: controlCoverage === 100 ? GREEN : controlCoverage > 0 ? GOLD : TEXT },
       ]} />
+
+      {authorityRootFindings.length > 0 ? (
+        <StatGrid stats={[
+          { label: "Authority Paths Resolved", value: `${authorityPathsResolved} / ${authorityRootFindings.length}`, color: authorityPathsResolved > 0 ? GREEN : TEXT },
+          { label: "Awaiting Evidence", value: `${authorityPathsAwaiting} / ${authorityRootFindings.length}`, color: authorityPathsAwaiting > 0 ? GOLD : TEXT },
+          { label: "Evidence Checks Verified", value: `${verifiedControls.length} / ${controls.length}`, color: verifiedControls.length > 0 ? GREEN : TEXT },
+          ...(review.scanStatus === "partial" || review.scanStatus === "error"
+            ? [{ label: "Scan Coverage", value: scanStatusText, color: GOLD }]
+            : []),
+        ]} />
+      ) : null}
+
+      <View style={[S.callout, { backgroundColor: SURFACE, borderWidth: 1, borderColor: SEP, borderRadius: 4 }]}>
+        <Text style={[S.calloutLabel, { color: GOLD }]}>SCAN STATUS</Text>
+        {scanMetadataAvailable ? (
+          <>
+            <MetaLine label="Last scan" value={fmtDate(review.lastScanAt)} />
+            <MetaLine label="Chains scanned" value={chainListLabel(review.scanChainsConfigured)} />
+            <MetaLine label="Assets scanned" value={`${activeAssets.length || review.assetsCount} / ${activeAssets.length || review.assetsCount}`} />
+            <MetaLine label="Detector attempts" value={review.detectorRunCount > 0 ? AUTHORITY_DETECTOR_ATTEMPTS : "Not available"} />
+            <MetaLine label="Scan status" value={scanStatusText} valueColor={review.scanStatus === "error" || review.scanStatus === "partial" ? GOLD : undefined} />
+            <MetaLine label="RPC config" value={review.scanNotes || (review.scanChainsUnconfigured.length > 0 ? `Unconfigured chains: ${chainListLabel(review.scanChainsUnconfigured)}` : "Configured")} />
+          </>
+        ) : (
+          <MetaLine label="Scan status" value="Not available" />
+        )}
+      </View>
 
       <View style={S.divider} />
 
@@ -712,7 +1038,7 @@ function ContentPage({ data }: { data: DefenseReviewReportData }) {
                   </Text>
                   {a.chain ? <Text style={{ fontSize: 7.5, color: SUBTLE, marginTop: 1 }}>{a.chain}{a.network ? ` / ${a.network}` : ""}</Text> : null}
                   <Text style={{ fontSize: 7.5, color: SUBTLE, marginTop: 1 }}>
-                    {"Admin/Owner: "}{(a.metadata?.ownerType as string | undefined) ?? "Not detected"}
+                    {"Admin/Owner: "}{mappedOwnerDisplay(a, resolvedOwnerFindings, unresolvedOwnerFindings)}{" - Role: "}{assetRoleLabel(a)}
                   </Text>
                 </View>
               </View>
@@ -738,8 +1064,7 @@ function ContentPage({ data }: { data: DefenseReviewReportData }) {
                   )}
                   {a.chain ? <Text style={{ fontSize: 7.5, color: SUBTLE, marginTop: 1 }}>{a.chain}{a.network ? ` / ${a.network}` : ""}</Text> : null}
                   <Text style={{ fontSize: 7.5, color: SUBTLE, marginTop: 1 }}>
-                    {"Admin/Owner: "}{(a.metadata?.ownerType as string | undefined) ?? "Not detected"}
-                    {(a.metadata?.role as string | undefined) ? ` · Role: ${a.metadata?.role as string}` : ""}
+                    {"Admin/Owner: "}{mappedOwnerDisplay(a, resolvedOwnerFindings, unresolvedOwnerFindings)}{" - Role: "}{assetRoleLabel(a)}
                   </Text>
                 </View>
               </View>
@@ -786,7 +1111,7 @@ function ContentPage({ data }: { data: DefenseReviewReportData }) {
         ))}
         <View style={[S.callout, { borderLeftWidth: 2, borderLeftColor: SUBTLE, backgroundColor: `${SUBTLE}0D`, borderRadius: 0, marginTop: 6 }]}>
           <Text style={[S.calloutText, { fontSize: 8, color: SUBTLE }]}>
-            High-severity findings in this report represent unverified authority surfaces — not confirmed vulnerabilities. Many findings reflect missing evidence rather than confirmed risk. Likelihood and verification confidence are factored into severity.
+            High-risk authority surfaces in this report represent unverified control paths — not confirmed vulnerabilities. Many findings reflect missing evidence rather than confirmed risk. Likelihood and verification confidence are factored into severity.
           </Text>
         </View>
       </View>
@@ -813,6 +1138,33 @@ function ContentPage({ data }: { data: DefenseReviewReportData }) {
                 const assetAddr = (f.evidence as Record<string, unknown>)?.assetAddress as string | undefined;
                 const adminAddr = (f.evidence as Record<string, unknown>)?.adminAddress as string | undefined;
                 const role = (f.evidence as Record<string, unknown>)?.role as string | undefined;
+                const evidenceSource = (f.evidence as Record<string, unknown>)?.evidenceSource as string | undefined;
+                const confidence = (f.evidence as Record<string, unknown>)?.confidence as string | undefined;
+                const ownerEvidenceConfidence = (f.evidence as Record<string, unknown>)?.ownerEvidenceConfidence as string | undefined;
+                const controlVerification = (f.evidence as Record<string, unknown>)?.controlVerification as string | undefined;
+                const adminOwnerStatus = (f.evidence as Record<string, unknown>)?.adminOwnerStatus as string | undefined;
+                const notes = (f.evidence as Record<string, unknown>)?.notes;
+                const noteLines = Array.isArray(notes) ? notes.filter((item): item is string => typeof item === "string" && item.length > 0) : [];
+                const isConcentration = f.findingType === "role_concentration";
+                const affectedNames = [
+                  ...evidenceAssetNames((f.evidence as Record<string, unknown>)?.assetsAffected),
+                  ...evidenceAssetNames((f.evidence as Record<string, unknown>)?.controlledAssets),
+                ].filter((name, index, all) => all.indexOf(name) === index);
+                const adminDisplay = adminAddr
+                  ?? adminOwnerStatus
+                  ?? (confidence === "evidence_required"
+                    ? "Evidence required"
+                    : confidence === "unresolved"
+                      ? "Unresolved"
+                      : confidence === "error"
+                        ? "Detection error"
+                        : ((f.evidence as Record<string, unknown>)?.currentEvidenceStatus ? "Evidence required" : "Not detected"));
+                const detectionLines = [
+                  ["Evidence Source", evidenceSource],
+                  ["Detection Method", (f.evidence as Record<string, unknown>)?.detectionMethod],
+                  ["Detection Result", (f.evidence as Record<string, unknown>)?.detectionResult ?? (f.evidence as Record<string, unknown>)?.currentEvidenceStatus],
+                  ["Confidence", confidence],
+                ].filter((item): item is [string, string] => typeof item[1] === "string" && item[1].length > 0);
                 return (
                   <View key={f.id} style={[S.findingBlock, { borderLeftWidth: 3, borderLeftColor: SEV_COLOR[f.severity], borderRadius: 0 }]} wrap={false}>
                     <View style={S.findingHeader}>
@@ -826,14 +1178,35 @@ function ContentPage({ data }: { data: DefenseReviewReportData }) {
                     <View style={{ marginBottom: 5 }}>
                       <Text style={S.findingSubLabel}>CURRENT EVIDENCE STATUS</Text>
                       <Text style={[S.findingSubText, { marginLeft: 8 }]}>
-                        · Source: Submitted project metadata + scanner analysis
+                        · Source: {evidenceSource ?? "Submitted project metadata + scanner analysis"}
                       </Text>
-                      <Text style={[S.findingSubText, { marginLeft: 8 }]}>
-                        · Contract address: {assetAddr ?? "Not provided"}
-                      </Text>
-                      <Text style={[S.findingSubText, { marginLeft: 8 }]}>
-                        · Admin/Owner: {adminAddr ?? "Not detected"}
-                      </Text>
+                      {isConcentration ? (
+                        <>
+                          <Text style={[S.findingSubText, { marginLeft: 8 }]}>Assets affected: {affectedNames.join(", ")}</Text>
+                          <Text style={[S.findingSubText, { marginLeft: 8 }]}>Shared owner: {adminAddr ?? "Not provided"}</Text>
+                          {ownerEvidenceConfidence ? (
+                            <Text style={[S.findingSubText, { marginLeft: 8 }]}>Owner Evidence Confidence: {ownerEvidenceConfidence}</Text>
+                          ) : null}
+                          {controlVerification ? (
+                            <Text style={[S.findingSubText, { marginLeft: 8 }]}>Control Verification: {controlVerification}</Text>
+                          ) : null}
+                        </>
+                      ) : (
+                        <>
+                          <Text style={[S.findingSubText, { marginLeft: 8 }]}>
+                            · Contract address: {assetAddr ?? "Not provided"}
+                          </Text>
+                          <Text style={[S.findingSubText, { marginLeft: 8 }]}>
+                            · Admin/Owner: {adminDisplay}
+                          </Text>
+                        </>
+                      )}
+                      {detectionLines.map(([label, value]) => (
+                        <Text key={label} style={[S.findingSubText, { marginLeft: 8 }]}>{label}: {value}</Text>
+                      ))}
+                      {noteLines.map((note, i) => (
+                        <Text key={`note-${i}`} style={[S.findingSubText, { marginLeft: 8 }]}>Note: {note}</Text>
+                      ))}
                       {role ? (
                         <Text style={[S.findingSubText, { marginLeft: 8 }]}>· Role: {role}</Text>
                       ) : null}
@@ -867,8 +1240,26 @@ function ContentPage({ data }: { data: DefenseReviewReportData }) {
       <View style={S.divider} />
 
       {/* ── 05 Relevant Threat Families ─────────────────────────── */}
+      <View>
+        <SectionHeading num={5} title="What this means" />
+        <Text style={S.body}>{whatThisMeansCopy(review, {
+          resolvedCount: authorityPathsResolved,
+          unresolvedCount: authorityPathsAwaiting,
+          totalAssets: activeAssets.length,
+          resolvedAssetNames,
+          unresolvedAssetNames,
+          sharedOwnerAddr,
+          sharedOwnerAssetCount,
+        })}</Text>
+      </View>
+
+      <View style={S.divider} />
+
       <View break>
-        <SectionHeading num={5} title="Relevant Threat Families" />
+        <SectionHeading num={6} title="Relevant Threat Families" />
+        <Text style={S.body}>
+          Project relevance scores reflect categorical match strength against the case library, not exploit probability.
+        </Text>
 
         {!relevance || relevance.relevantThreatFamilies.length === 0 ? (
           <Text style={{ fontSize: 9, color: SUBTLE, fontStyle: "italic" }}>No relevant threat families mapped yet. Run the Admin Surface Scan and ensure findings are present.</Text>
@@ -887,7 +1278,7 @@ function ContentPage({ data }: { data: DefenseReviewReportData }) {
                   <Text style={S.threatStat}>Global cases: <Text style={{ color: TEXT, fontFamily: "Helvetica-Bold" }}>{tf.globalCaseCount}</Text></Text>
                 )}
                 <Text style={S.threatStat}>Critical (global): <Text style={{ color: tf.criticalCount > 0 ? RED : TEXT, fontFamily: "Helvetica-Bold" }}>{tf.criticalCount}</Text></Text>
-                <Text style={S.threatStat}>Replay validated: <Text style={{ color: TEXT, fontFamily: "Helvetica-Bold" }}>{tf.replayValidatedCount}</Text></Text>
+                <Text style={S.threatStat}>Cases catalogued: <Text style={{ color: TEXT, fontFamily: "Helvetica-Bold" }}>{tf.replayValidatedCount}</Text></Text>
               </View>
               {tf.globalCaseCount === 0 ? (
                 <Text style={[S.findingSubText, { marginBottom: 4, fontStyle: "italic" }]}>
@@ -906,17 +1297,28 @@ function ContentPage({ data }: { data: DefenseReviewReportData }) {
 
       {/* ── 06 Recommended Controls ─────────────────────────────── */}
       <View break>
-        <SectionHeading num={6} title="Recommended Controls" />
+        <SectionHeading num={7} title="Recommended Controls" />
+        <Text style={S.body}>
+          Controls remain grouped by asset for remediation tracking. The immediate review gate is to verify the shared owner operating model and resolve Goldoracle authority evidence; the controls below remain missing until supporting policy or governance evidence is submitted.
+        </Text>
 
         {controls.length === 0 ? (
           <Text style={{ fontSize: 9, color: SUBTLE, fontStyle: "italic" }}>No controls generated. Generate controls from authority findings in the Project Map Controls tab.</Text>
         ) : (
-          controlsByStatus.map(({ st, items }) => (
-            <View key={st}>
-              <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: CTRL_COLOR[st], letterSpacing: 1.2, marginBottom: 5, marginTop: 4 }}>
-                {CTRL_LABEL[st]} ({items.length})
+          controlGroups.map((group) => (
+            <View key={group.key}>
+              <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1.2, marginBottom: 5, marginTop: 4 }}>
+                {group.label.toUpperCase()}
               </Text>
-              {items.map((c) => {
+              {(["missing", "planned", "implemented", "verified", "not_applicable"] as ProjectControlStatus[])
+                .map((st) => ({ st, items: group.items.filter((c) => c.status === st) }))
+                .filter(({ items }) => items.length > 0)
+                .map(({ st, items }) => (
+                  <View key={`${group.key}-${st}`}>
+                    <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: CTRL_COLOR[st], letterSpacing: 1, marginBottom: 4 }}>
+                      {CTRL_LABEL[st]} ({items.length})
+                    </Text>
+                    {items.map((c) => {
                 const displayTitle = resolveControlTitle(c, assets, findings, titleCounts);
                 const vDate = c.verifiedAt
                   ? new Date(c.verifiedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -944,26 +1346,27 @@ function ContentPage({ data }: { data: DefenseReviewReportData }) {
                   </View>
                 );
               })}
+                  </View>
+                ))}
             </View>
           ))
         )}
-
-        {controls.filter((c) => c.status === "not_applicable").length > 0 ? (
-          <Text style={{ fontSize: 8, color: SUBTLE, marginTop: 6 }}>
-            {controls.filter((c) => c.status === "not_applicable").length} control(s) marked Not Applicable.
-          </Text>
-        ) : null}
       </View>
 
       <View style={S.divider} />
 
       {/* ── 07 Verification Status ──────────────────────────────── */}
-      <SectionHeading num={7} title="Verification Status" />
+      <SectionHeading num={8} title="Verification Status" />
 
       <StatGrid stats={[
         { label: "Controls Total", value: controls.length },
-        { label: "Verified", value: verifiedControls.length, color: verifiedControls.length > 0 ? GREEN : TEXT },
+        { label: "Controls Verified", value: `${verifiedControls.length} / ${controls.length}`, color: verifiedControls.length > 0 ? GREEN : TEXT },
         { label: "Coverage", value: `${controlCoverage}%`, color: controlCoverage === 100 ? GREEN : controlCoverage > 50 ? GOLD : TEXT },
+        ...(authorityPathsResolved > 0 ? [{ label: "Owner Evidence Observed", value: `${authorityPathsResolved} / ${authorityRootFindings.length}`, color: GREEN }] : []),
+        ...(authorityRootFindings.length > 0 ? [
+          { label: "Authority Paths Resolved", value: `${authorityPathsResolved} / ${authorityRootFindings.length}`, color: authorityPathsResolved > 0 ? GREEN : TEXT },
+          { label: "Authority Paths Awaiting", value: `${authorityPathsAwaiting} / ${authorityRootFindings.length}`, color: authorityPathsAwaiting > 0 ? GOLD : TEXT },
+        ] : []),
       ]} />
 
       <View style={[S.callout, {
@@ -987,7 +1390,7 @@ function ContentPage({ data }: { data: DefenseReviewReportData }) {
       <View style={S.divider} />
 
       {/* ── 08 Next Actions ─────────────────────────────────────── */}
-      <SectionHeading num={8} title="Next Actions" />
+      <SectionHeading num={9} title="Next Actions" />
 
       {nextActions.map((action, i) => (
         <View key={i} style={{ flexDirection: "row", marginBottom: 8, alignItems: "flex-start" }} wrap={false}>

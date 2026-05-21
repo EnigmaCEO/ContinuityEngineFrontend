@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { fetchDefenseReview, refreshDefenseReview, updateDefenseReview } from "@/lib/defense-review/service";
-import type { DefenseReview, DefenseReviewStatus } from "@/lib/defense-review/types";
+import { fetchDefenseReview, refreshDefenseReview, runDefenseReviewScan, updateDefenseReview } from "@/lib/defense-review/service";
+import type { DefenseReview, DefenseReviewStatus, ScanStatus } from "@/lib/defense-review/types";
 
 const GOLD = "#D4AF37";
 const TEXT = "#E2E8F0";
@@ -143,6 +143,8 @@ export default function DefenseReviewDetailPage() {
   const [editStatus, setEditStatus] = useState<DefenseReviewStatus | "">("");
   const [editNotes, setEditNotes] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<{ findingsCreated: number; detectorsRan: number; chainsConfigured: number[]; chainsUnconfigured: number[] } | null>(null);
 
   useEffect(() => {
     if (!reviewId) return;
@@ -172,6 +174,29 @@ export default function DefenseReviewDetailPage() {
       setError(err instanceof Error ? err.message : "Failed to refresh counts");
     } finally {
       setRefreshing(false);
+    }
+  }
+
+  async function handleRunScan() {
+    if (!review) return;
+    setScanning(true);
+    setError("");
+    setMessage("");
+    setScanResult(null);
+    try {
+      const result = await runDefenseReviewScan(review.id);
+      setReview(result.review);
+      setScanResult({
+        findingsCreated: result.findingsCreated,
+        detectorsRan: result.detectorsRan,
+        chainsConfigured: result.chainsConfigured,
+        chainsUnconfigured: result.chainsUnconfigured,
+      });
+      setMessage(`Scan complete — ${result.findingsCreated} findings, ${result.detectorsRan} detectors ran.`);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Scan failed");
+    } finally {
+      setScanning(false);
     }
   }
 
@@ -286,24 +311,44 @@ export default function DefenseReviewDetailPage() {
       <section style={{ display: "grid", gap: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <div style={{ fontSize: 11, color: MUTED }}>Counts snapshotted at review creation. Refresh to re-sync from current project state.</div>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            style={{
-              border: "1px solid rgba(212,175,55,0.3)",
-              borderRadius: 6,
-              background: "rgba(212,175,55,0.1)",
-              color: refreshing ? MUTED : GOLD,
-              padding: "5px 12px",
-              fontSize: 11,
-              fontWeight: 700,
-              cursor: refreshing ? "default" : "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {refreshing ? "Refreshing…" : "Refresh Counts"}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing || scanning}
+              style={{
+                border: "1px solid rgba(212,175,55,0.3)",
+                borderRadius: 6,
+                background: "rgba(212,175,55,0.1)",
+                color: refreshing ? MUTED : GOLD,
+                padding: "5px 12px",
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: refreshing ? "default" : "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {refreshing ? "Refreshing…" : "Refresh Counts"}
+            </button>
+            <button
+              type="button"
+              onClick={handleRunScan}
+              disabled={scanning || refreshing}
+              style={{
+                border: `1px solid ${scanning ? "rgba(148,163,184,0.2)" : "rgba(249,115,22,0.4)"}`,
+                borderRadius: 6,
+                background: scanning ? "rgba(148,163,184,0.06)" : "rgba(249,115,22,0.1)",
+                color: scanning ? MUTED : "#F97316",
+                padding: "5px 12px",
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: scanning ? "default" : "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {scanning ? "Scanning…" : "Run EVM Scan"}
+            </button>
+          </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
         <Kpi label="Assets Mapped" value={String(review.assetsCount)} />
@@ -328,6 +373,9 @@ export default function DefenseReviewDetailPage() {
         />
         </div>
       </section>
+
+      {/* Scan status */}
+      <ScanStatusPanel review={review} scanResult={scanResult} />
 
       {/* Empty states for findings, threats, controls */}
       <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
@@ -492,6 +540,77 @@ export default function DefenseReviewDetailPage() {
         </form>
       </section>
     </div>
+  );
+}
+
+const SCAN_STATUS_COLOR: Record<ScanStatus, string> = {
+  not_run: "rgba(148,163,184,0.6)",
+  running: "#3B82F6",
+  complete: "#22C55E",
+  partial: "#F97316",
+  error: "#EF4444",
+};
+
+const SCAN_STATUS_LABEL: Record<ScanStatus, string> = {
+  not_run: "Not Run",
+  running: "Running…",
+  complete: "Complete",
+  partial: "Partial — some chains unconfigured",
+  error: "Error",
+};
+
+function ScanStatusPanel({
+  review,
+  scanResult,
+}: {
+  review: DefenseReview;
+  scanResult: { findingsCreated: number; detectorsRan: number; chainsConfigured: number[]; chainsUnconfigured: number[] } | null;
+}) {
+  const status = review.scanStatus ?? "not_run";
+  const color = SCAN_STATUS_COLOR[status];
+  const label = SCAN_STATUS_LABEL[status];
+
+  return (
+    <section style={{ ...PANEL, display: "grid", gap: 8 }}>
+      <SectionLabel>EVM SCAN STATUS</SectionLabel>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color,
+            background: `${color}18`,
+            padding: "3px 10px",
+            borderRadius: 4,
+            border: `1px solid ${color}44`,
+          }}
+        >
+          {label}
+        </span>
+        {review.lastScanAt && (
+          <span style={{ fontSize: 11, color: MUTED }}>Last scanned {formatDate(review.lastScanAt)}</span>
+        )}
+        {scanResult && (
+          <span style={{ fontSize: 11, color: "#86EFAC" }}>
+            {scanResult.findingsCreated} findings · {scanResult.detectorsRan} detectors ran
+            {scanResult.chainsConfigured.length > 0 && ` · chains ${scanResult.chainsConfigured.join(", ")}`}
+          </span>
+        )}
+      </div>
+      {(review.scanChainsUnconfigured?.length > 0) && (
+        <div style={{ fontSize: 11, color: "#F97316" }}>
+          No RPC configured for chain{review.scanChainsUnconfigured.length > 1 ? "s" : ""}{" "}
+          {review.scanChainsUnconfigured.join(", ")} — set{" "}
+          <code style={{ fontFamily: "monospace", background: "rgba(249,115,22,0.1)", padding: "0 4px", borderRadius: 3 }}>
+            SCE_EVM_RPC_URL_{"{chain_id}"}
+          </code>{" "}
+          or <code style={{ fontFamily: "monospace", background: "rgba(249,115,22,0.1)", padding: "0 4px", borderRadius: 3 }}>SCE_USE_PUBLIC_RPC_FALLBACKS=1</code>
+        </div>
+      )}
+      {review.scanNotes && (
+        <div style={{ fontSize: 11, color: MUTED }}>{review.scanNotes}</div>
+      )}
+    </section>
   );
 }
 

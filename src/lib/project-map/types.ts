@@ -60,7 +60,10 @@ export type AdminFindingType =
   | "keeper_trigger_authority"
   | "keeper_execution_authority"
   | "keeper_failure_behavior"
-  | "keeper_continuity_risk";
+  | "keeper_continuity_risk"
+  | "owner_detected"
+  | "access_control_detected"
+  | "oracle_feed_detected";
 
 export interface Project {
   id: string;

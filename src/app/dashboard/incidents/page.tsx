@@ -94,7 +94,7 @@ function SelectFilter({
 function replayLabel(status: ReplayStatus): string {
   switch (status) {
     case "passed":
-      return "Replay Validated";
+      return "Case Indexed";
     case "available":
       return "Awaiting Replay";
     case "failed":
@@ -313,7 +313,7 @@ export default function IncidentsPage() {
               Incidents
             </h1>
             <p style={{ color: "rgba(140,140,170,0.78)", fontSize: 12, lineHeight: 1.55, margin: "7px 0 0", maxWidth: 650 }}>
-              Normalized Case Library records presented as incident intelligence with replay validation and response coverage.
+              Normalized Case Library records presented as incident intelligence with case-indexed coverage and response coverage.
             </p>
           </div>
         </div>
@@ -465,7 +465,7 @@ export default function IncidentsPage() {
             </colgroup>
             <thead>
               <tr style={{ borderBottom: `1px solid ${CLR.border}`, height: 32 }}>
-                {["Title", "Source", "Severity", "Status", "Published / Discovered", "Tags / Threat Family", "Replay Validated", "Response Coverage"].map((header) => (
+                {["Title", "Source", "Severity", "Status", "Published / Discovered", "Tags / Threat Family", "Case Indexed", "Response Coverage"].map((header) => (
                   <th
                     key={header}
                     style={{

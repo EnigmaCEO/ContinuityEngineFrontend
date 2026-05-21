@@ -2,6 +2,7 @@ import type {
   CreateDefenseReviewRequest,
   DefenseReview,
   DefenseReviewsResponse,
+  RunScanResponse,
   UpdateDefenseReviewRequest,
 } from "./types";
 
@@ -58,6 +59,12 @@ export async function updateDefenseReview(
 
 export async function refreshDefenseReview(reviewId: string): Promise<DefenseReview> {
   return api<DefenseReview>(`/defense-reviews/${reviewId}/refresh`, {
+    method: "POST",
+  });
+}
+
+export async function runDefenseReviewScan(reviewId: string): Promise<RunScanResponse> {
+  return api<RunScanResponse>(`/defense-reviews/${reviewId}/run-scan`, {
     method: "POST",
   });
 }
