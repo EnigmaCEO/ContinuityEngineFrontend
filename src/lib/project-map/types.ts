@@ -14,6 +14,11 @@ export type ProjectAssetType =
   | "other";
 export type ProjectAssetStatus = "active" | "watch" | "archived";
 export type AdminFindingSeverity = "low" | "medium" | "high" | "critical";
+export type AdminFindingCategory =
+  | "analytical_finding"
+  | "supporting_evidence_receipt"
+  | "scan_quality_limitation"
+  | "candidate_expansion_item";
 export type ProjectControlStatus = "missing" | "planned" | "implemented" | "verified" | "not_applicable";
 export type AdminFindingType =
   | "owner_eoa"
@@ -27,6 +32,7 @@ export type AdminFindingType =
   | "unknown_admin"
   | "multisig_detected"
   | "timelock_detected"
+  | "protocol_adapter_limitation"
   // Treasury role probes
   | "treasury_movement_authority"
   | "treasury_allocation_authority"
@@ -97,6 +103,7 @@ export interface AdminSurfaceFinding {
   projectId: string;
   assetId?: string | null;
   findingType: AdminFindingType;
+  category?: AdminFindingCategory;
   severity: AdminFindingSeverity;
   title: string;
   summary: string;

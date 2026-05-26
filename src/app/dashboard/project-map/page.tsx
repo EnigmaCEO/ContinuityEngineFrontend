@@ -6,6 +6,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { useSession } from "@/components/layout/SessionContext";
 import {
+  archiveProject,
   createProject,
   createProjectAsset,
   fetchAdminSurfaceFindings,
@@ -179,6 +180,7 @@ export default function ProjectMapPage() {
   const [message, setMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [reviewLoading, setReviewLoading] = useState(false);
+  const [archiveLoading, setArchiveLoading] = useState(false);
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? null;
   const selectedStats = selectedProjectId ? projectStats[selectedProjectId] ?? emptyStats : emptyStats;
@@ -315,6 +317,28 @@ export default function ProjectMapPage() {
       await loadProjects(project.id);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Failed to create project.");
+    }
+  }
+
+  async function handleArchiveProject() {
+    if (!selectedProject) return;
+    const confirmed = window.confirm(
+      `Archive "${selectedProject.name}"? It will be removed from the active project list. Its assets, findings, and review records will be retained.`,
+    );
+    if (!confirmed) return;
+
+    setArchiveLoading(true);
+    setError("");
+    setMessage("");
+    try {
+      await archiveProject(selectedProject.id);
+      setShowAddAsset(false);
+      setMessage(`Project archived: ${selectedProject.name}`);
+      await loadProjects();
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to archive project.");
+    } finally {
+      setArchiveLoading(false);
     }
   }
 
@@ -918,6 +942,14 @@ export default function ProjectMapPage() {
                     </ActionButton>
                     <ActionButton onClick={handleStartDefenseReview} disabled={!selectedProjectId || !canManageProjects || reviewLoading}>
                       {reviewLoading ? "Opening…" : "Start Defense Review"}
+                    </ActionButton>
+                    <ActionButton
+                      onClick={handleArchiveProject}
+                      disabled={!selectedProjectId || !canManageProjects || archiveLoading}
+                      variant="danger"
+                      title="Retain project history while removing it from the active list"
+                    >
+                      {archiveLoading ? "Archiving..." : "Archive Project"}
                     </ActionButton>
                   </div>
                 </div>
@@ -2178,13 +2210,16 @@ function ActionButton({
   onClick,
   type = "button",
   title,
+  variant = "primary",
 }: {
   children: React.ReactNode;
   disabled?: boolean;
   onClick?: () => void;
   type?: "button" | "submit";
   title?: string;
+  variant?: "primary" | "danger";
 }) {
+  const destructive = variant === "danger";
   return (
     <button
       type={type}
@@ -2192,10 +2227,10 @@ function ActionButton({
       disabled={disabled}
       title={title}
       style={{
-        border: "1px solid rgba(212,175,55,0.24)",
+        border: destructive ? "1px solid rgba(239,68,68,0.34)" : "1px solid rgba(212,175,55,0.24)",
         borderRadius: 8,
-        background: disabled ? "rgba(148,163,184,0.12)" : GOLD,
-        color: disabled ? "rgba(148,163,184,0.84)" : "#111827",
+        background: disabled ? "rgba(148,163,184,0.12)" : destructive ? "rgba(239,68,68,0.11)" : GOLD,
+        color: disabled ? "rgba(148,163,184,0.84)" : destructive ? "#FCA5A5" : "#111827",
         padding: "8px 11px",
         fontSize: 11,
         fontWeight: 800,

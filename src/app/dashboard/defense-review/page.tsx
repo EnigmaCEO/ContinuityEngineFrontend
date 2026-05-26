@@ -84,8 +84,8 @@ export default function DefenseReviewsPage() {
             </div>
             <h1 style={{ margin: "8px 0 6px", fontSize: 30, color: TEXT }}>Defense Reviews</h1>
             <p style={{ margin: 0, color: "rgba(203,213,225,0.72)", maxWidth: 800, lineHeight: 1.5, fontSize: 13 }}>
-              Public-surface review using mapped assets, authority findings, relevant threat families, and recommended controls.
-              SCE does not control the reviewed project or hold keys.
+              Public-surface review using mapped assets, authority findings, relevant threat families, and requested evidence.
+              SCE does not administer the reviewed project or hold keys.
             </p>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -161,8 +161,8 @@ function ReviewRow({ review }: { review: DefenseReview }) {
             <Stat label="Critical" value={String(review.criticalFindingsCount)} color="#EF4444" />
             <Stat label="High" value={String(review.highFindingsCount)} color="#F97316" />
             <Stat label="Threat Families" value={String(review.relevantThreatFamiliesCount)} />
-            <Stat label="Controls" value={String(review.controlsCount)} />
-            <Stat label="Verified" value={String(review.verifiedControlsCount)} color="#22C55E" />
+            <Stat label="Public Facts" value={String(review.customerEvidenceStatus?.publicFactsObserved ?? 0)} />
+            <Stat label="Assumptions" value={String(review.customerEvidenceStatus?.unresolvedAssumptions ?? 0)} color={GOLD} />
           </div>
         </div>
         <div style={{ textAlign: "right", display: "grid", gap: 4 }}>

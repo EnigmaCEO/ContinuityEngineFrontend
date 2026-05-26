@@ -1,3 +1,4 @@
+import fs from "fs";
 import path from "path";
 import React from "react";
 import { type NextRequest, NextResponse } from "next/server";
@@ -61,7 +62,8 @@ export async function GET(
       serverFetch<ProjectRelevance>(`/projects/${pid}/relevance`, token),
     ]);
 
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const logoBuffer = fs.readFileSync(path.join(process.cwd(), "public", "defense.png"));
+  const logoPath = `data:image/png;base64,${logoBuffer.toString("base64")}`;
 
   const data: DefenseReviewReportData = {
     review,

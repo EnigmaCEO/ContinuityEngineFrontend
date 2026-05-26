@@ -9,12 +9,11 @@ const TEXT_MUTED = "rgba(203,213,225,0.72)";
 
 const NAV_LINKS = [
   { label: "Overview",        href: "#overview",                id: "overview" },
+  { label: "Capabilities",    href: "#sce-capabilities",       id: "sce-capabilities" },
   { label: "Mandate",         href: "#continuity-mandate",      id: "continuity-mandate" },
-  { label: "vs. Audit",       href: "#why-sce-vs-audit",        id: "why-sce-vs-audit" },
   { label: "How It Works",    href: "#how-sce-works",           id: "how-sce-works" },
   { label: "Ecosystem",       href: "#ecosystem-coverage",      id: "ecosystem-coverage" },
-  { label: "Sample Review",   href: "#sample-defense-review",   id: "sample-defense-review" },
-  { label: "Defense Review",  href: "#first-service-door",      id: "first-service-door" },
+  { label: "Services",        href: "#first-service-door",      id: "first-service-door" },
 ];
 
 const SECTION_IDS = NAV_LINKS.map((l) => l.id);

@@ -8,7 +8,7 @@ import TickerClient from "./TickerClient";
 export const metadata: Metadata = {
   title: "Sagitta Continuity Engine — Web3 Protocol Continuity Intelligence",
   description:
-    "SCE delivers Web3 continuity intelligence, authority-risk review, incident mapping, and client-ready defense reports for protocols, DAOs, and DeFi systems.",
+    "SCE is the public-surface authority intelligence layer for protocol continuity, linking incidents, threat families, authority paths, and evidence gaps.",
 };
 
 const GOLD = "#D4AF37";
@@ -36,32 +36,28 @@ const BORDER = "rgba(212,175,55,0.14)";
 
 const CAPABILITIES = [
   {
-    label: "Global Intelligence",
-    body: "Continuously ingests public vulnerability feeds, advisory records, and Web3 incident reports into a normalized case archive.",
+    label: "Case Library",
+    body: "Tracks public incidents, CVEs, advisories, DeFi exploit patterns, and threat families in a normalized intelligence archive.",
   },
   {
-    label: "Incident Mapping",
-    body: "Normalizes, classifies, and links real incidents to threat families, doctrine rules, and replay scenarios without manual triage.",
+    label: "Threat Matrix",
+    body: "Connects project authority surfaces to relevant incident families so operators can see which failure modes matter.",
   },
   {
-    label: "Protocol Surface Mapping",
-    body: "Registers public contract addresses, proxies, oracles, keepers, and frontends as a zero-custody project surface.",
+    label: "Admin Surface Scanner",
+    body: "Resolves owner/admin/proxy/timelock paths where possible using public calls, verified metadata, and submitted public evidence.",
   },
   {
-    label: "Authority Risk Review",
-    body: "Deterministically scans admin surfaces: EOA owners, upgrade authorities, treasury controllers, mint and pause capabilities, proxy admins.",
+    label: "Authority Path Mapping",
+    body: "Identifies shared owners, unresolved authority paths, role concentration, and control surfaces that need operator confirmation.",
   },
   {
-    label: "Doctrine & Response Coverage",
-    body: "Maps incidents to a doctrine brain. Tags recommended actions and continuity implications across oracle, bridge, governance, admin-key, and treasury scenarios.",
+    label: "Evidence Reports",
+    body: "Separates observed owner/admin evidence from verified controls, then packages the intelligence into reports and proof outputs.",
   },
   {
-    label: "Controls & Verification",
-    body: "Generates control recommendations from findings. Tracks evidence, verification status, and reviewer notes without requiring key custody.",
-  },
-  {
-    label: "Defense Review Reports",
-    body: "Assembles findings, threat families, controls, and verification status into a client-ready public-surface review report.",
+    label: "Powered Outputs",
+    body: "Defense Reviews, research notes, and dashboard views are outputs of the same SCE intelligence layer.",
   },
 ];
 
@@ -190,11 +186,11 @@ export default function HomePage() {
               letterSpacing: "-0.03em",
               color: TEXT,
             }}>
-              Know what<br />
+              Sagitta<br />
               <span style={{
                 ...PURPLE_GRADIENT_TEXT,
-              }}>breaks</span> before<br />
-              it breaks you.
+              }}>Continuity</span><br />
+              Engine
             </h1>
 
             {/* Subtext */}
@@ -205,13 +201,14 @@ export default function HomePage() {
               color: TEXT_MUTED,
               lineHeight: 1.78,
             }}>
-              Survival infrastructure for protocols when normal assumptions fail. SCE maps control risk,
-              incident exposure, and authority gaps before a threat-matrix event becomes a public failure.
+              Public-surface authority intelligence for protocol continuity. SCE maps public authority paths,
+              incident patterns, threat families, and evidence gaps so protocols can understand what may break
+              before it becomes an emergency.
             </p>
 
             {/* CTAs */}
             <div className="hero-ctas" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 32 }}>
-              <a href="#first-service-door" className="hero-cta-btn" style={{
+              <a href="#how-sce-works" className="hero-cta-btn" style={{
                 padding: "14px 24px",
                 borderRadius: 8,
                 background: GOLD,
@@ -223,8 +220,8 @@ export default function HomePage() {
                 alignItems: "center",
                 gap: 8,
                 whiteSpace: "nowrap" as const,
-              }}>Request Defense Review &nbsp;→</a>
-              <a href="#how-sce-works" className="hero-cta-btn" style={{
+              }}>Explore SCE &nbsp;→</a>
+              <Link href="/login" className="hero-cta-btn" style={{
                 padding: "14px 24px",
                 borderRadius: 8,
                 border: `1px solid rgba(255,255,255,0.16)`,
@@ -237,7 +234,7 @@ export default function HomePage() {
                 alignItems: "center",
                 gap: 8,
                 whiteSpace: "nowrap" as const,
-              }}>Explore the Continuity Engine &nbsp;→</a>
+              }}>View dashboard &nbsp;→</Link>
             </div>
 
             {/* Trust line */}
@@ -254,6 +251,56 @@ export default function HomePage() {
         {/* Recent incidents ticker pinned to bottom of hero, always above fold */}
         <TickerClient />
 
+      </section>
+
+      {/* SCE INTELLIGENCE LAYER */}
+      <section id="sce-capabilities" style={{
+        scrollMarginTop: 96,
+        background: BG,
+        borderTop: `1px solid ${BORDER}`,
+        borderBottom: `1px solid ${PURPLE_FAINT}`,
+        padding: "72px max(40px, 5vw)",
+      }}>
+        <div style={{ maxWidth: 1120, margin: "0 auto" }}>
+          <div style={{ maxWidth: 720, marginBottom: 34 }}>
+            <div style={{
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase" as const,
+              color: PURPLE,
+              marginBottom: 14,
+            }}>
+              SCE intelligence layer
+            </div>
+            <h2 style={{
+              margin: "0 0 16px",
+              fontSize: "clamp(28px, 3.4vw, 46px)",
+              fontWeight: 850,
+              lineHeight: 1.08,
+              color: TEXT,
+            }}>
+              The engine behind continuity decisions.
+            </h2>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7, color: TEXT_MUTED }}>
+              SCE ingests public incident and advisory data, maps project authority surfaces, detects public owner/admin evidence, and powers reports, dashboards, and public proof surfaces.
+            </p>
+          </div>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
+            gap: 14,
+          }}>
+            {CAPABILITIES.map((capability, index) => (
+              <CapabilityCard
+                key={capability.label}
+                label={capability.label}
+                body={capability.body}
+                accent={index === CAPABILITIES.length - 1 ? "gold" : "purple"}
+              />
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* CONTINUITY MANDATE */}
@@ -707,7 +754,7 @@ export default function HomePage() {
               Complements audit work.
             </div>
 
-            <a href="#sample-defense-review" style={{
+            <a href="#first-service-door" style={{
               display: "inline-flex",
               alignItems: "center",
               gap: 10,
@@ -719,7 +766,7 @@ export default function HomePage() {
               fontWeight: 800,
               fontSize: 14,
             }}>
-              See Defense Review &nbsp;→
+              View powered output &nbsp;→
             </a>
           </div>
 
@@ -817,8 +864,8 @@ export default function HomePage() {
             {[
               {
                 n: 1,
-                label: "Monitor incidents",
-                body: "Continuously ingest SCE, Web, GitHub, advisories, and DeFi/REST feeds.",
+                label: "Ingest public intelligence",
+                body: "Track public incidents, CVEs, advisories, GitHub records, and DeFi exploit patterns.",
                 icon: (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -827,8 +874,8 @@ export default function HomePage() {
               },
               {
                 n: 2,
-                label: "Map protocol surface",
-                body: "Register public contracts, addresses, roles, and admin paths.",
+                label: "Map authority surfaces",
+                body: "Register public contracts, asset roles, owners, proxies, oracles, treasuries, and governance references.",
                 icon: (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="3" width="20" height="4" rx="1"/><rect x="2" y="10" width="20" height="4" rx="1"/><rect x="2" y="17" width="20" height="4" rx="1"/>
@@ -837,8 +884,8 @@ export default function HomePage() {
               },
               {
                 n: 3,
-                label: "Detect authority risks",
-                body: "Determine admin-surface risks across EOAs, contracts, and policy.",
+                label: "Resolve admin paths",
+                body: "Use public calls and metadata to resolve owner/admin/proxy/timelock paths where possible.",
                 icon: (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
@@ -847,8 +894,8 @@ export default function HomePage() {
               },
               {
                 n: 4,
-                label: "Match threat families",
-                body: "Project findings are mapped to global threat families and tactics.",
+                label: "Connect threat families",
+                body: "Link project authority surfaces to relevant incident families in the SCE Case Library.",
                 icon: (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
@@ -857,8 +904,8 @@ export default function HomePage() {
               },
               {
                 n: 5,
-                label: "Recommend controls",
-                body: "Controls recommended are generated from findings and doctrine.",
+                label: "Separate evidence states",
+                body: "Separate observed owner/admin evidence from verified controls and missing evidence.",
                 icon: (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
@@ -868,8 +915,8 @@ export default function HomePage() {
               },
               {
                 n: 6,
-                label: "Track evidence",
-                body: "Capture, normalize, and link evidence across findings and reviews.",
+                label: "Map concentrations",
+                body: "Identify shared owners, unresolved paths, and concentration patterns without overstating claims.",
                 icon: (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -878,8 +925,8 @@ export default function HomePage() {
               },
               {
                 n: 7,
-                label: "Deliver defense review",
-                body: "Send a SCE-structured report with verification status and next actions.",
+                label: "Power outputs",
+                body: "Generate dashboards, Defense Reviews, evidence reports, and lightweight public research notes.",
                 icon: (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>
@@ -1288,6 +1335,7 @@ export default function HomePage() {
 
       {/* SAMPLE DEFENSE REVIEW */}
       <section id="sample-defense-review" style={{
+        display: "none",
         scrollMarginTop: 96,
         position: "relative",
         overflow: "hidden",
@@ -1334,7 +1382,7 @@ export default function HomePage() {
               Demo report using Sagitta Protocol testnet deployment.
             </p>
             <p style={{ fontSize: 13, lineHeight: 1.8, color: TEXT_FAINT, margin: 0 }}>
-              Shows report structure, authority-surface mapping, evidence workflow, control checks, and next actions. This is a sample Pre-Launch Defense Review — not a verified client result or a completed review.
+              Sample structure demonstration showing shared-owner concentration across 4 mapped assets. This testnet sample is not a verified client result, completed review, or audit.
             </p>
           </div>
 
@@ -1428,7 +1476,8 @@ export default function HomePage() {
                     { label: "Project", value: "Sagitta Protocol" },
                     { label: "Environment", value: "Testnet" },
                     { label: "Review Type", value: "Public-Surface" },
-                    { label: "Coverage", value: "0/29 verified" },
+                    { label: "Owner Paths", value: "4/5 resolved" },
+                    { label: "Controls", value: "0/29 verified" },
                   ].map(({ label, value }) => (
                     <div key={label} style={{
                       display: "flex",
@@ -1510,16 +1559,16 @@ export default function HomePage() {
                 color: TEXT_MUTED,
                 margin: "0 0 20px",
               }}>
-                A structured review covering mapped assets, authority surfaces, threat-family relevance, control checks, and remediation priorities.
+                See how SCE resolves owner paths, detects shared-owner concentration, and separates observed owner evidence from verified controls.
               </p>
 
               {/* Proof chips */}
               <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginBottom: 28 }}>
                 {[
-                  { label: "5 mapped assets" },
-                  { label: "29 control checks" },
-                  { label: "5 threat families" },
-                  { label: "0 keys required" },
+                  { label: "5 mapped testnet assets" },
+                  { label: "4 owner paths resolved" },
+                  { label: "1 unresolved oracle path" },
+                  { label: "Controls verified: 0/29" },
                 ].map(({ label }) => (
                   <span key={label} style={{
                     padding: "5px 12px",
@@ -1537,12 +1586,12 @@ export default function HomePage() {
               {/* Checklist */}
               <div style={{ display: "grid", gap: 13, marginBottom: 32 }}>
                 {[
-                  "Mapped assets and authority surfaces",
-                  "Threat-family relevance and risk summary",
-                  "Evidence status and missing controls",
-                  "Verification coverage",
-                  "Findings, severity, and next actions",
-                  "Executive summary for stakeholders",
+                  "Shared-owner concentration across 4 mapped assets",
+                  "Observed owner evidence separated from verified controls",
+                  "Unresolved oracle authority path called out separately",
+                  "Mapped assets, authority surfaces, and evidence status",
+                  "Threat-family relevance and remediation priorities",
+                  "Sample structure demonstration, not an audit",
                 ].map((item) => (
                   <div key={item} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                     <div style={{
@@ -1582,7 +1631,7 @@ export default function HomePage() {
                   <path d="M9 12l2 2 4-4"/>
                 </svg>
                 <span style={{ fontSize: 12, color: TEXT_FAINT }}>
-                  Zero-custody · No keys · No signing authority
+                  Testnet sample · Not a verified client result · No keys required
                 </span>
               </div>
 
@@ -1600,10 +1649,10 @@ export default function HomePage() {
                   fontWeight: 800,
                   fontSize: 14,
                 }}>
-                  View sample report &nbsp;→
+                  View sample report
                 </a>
                 <span style={{ fontSize: 12, color: TEXT_FAINT }}>
-                  Demo PDF · Sagitta Protocol testnet
+                  Shared-owner concentration across 4 mapped assets
                 </span>
               </div>
 
@@ -1614,6 +1663,54 @@ export default function HomePage() {
       </section>
 
       {/* FIRST SERVICE DOOR — Defense Review */}
+      {/* PUBLIC RESEARCH NOTES */}
+      <section style={{
+        position: "relative",
+        overflow: "hidden",
+        background: BG,
+        borderBottom: `1px solid ${PURPLE_FAINT}`,
+      }}>
+        <div style={{
+          padding: "48px max(40px, 5vw)",
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) auto",
+          gap: 24,
+          alignItems: "center",
+        }}>
+          <div style={{ maxWidth: 720 }}>
+            <div style={{
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase" as const,
+              color: PURPLE,
+              marginBottom: 12,
+            }}>
+              Public research notes
+            </div>
+            <p style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 700, lineHeight: 1.4, color: TEXT }}>
+              Explore how Sagitta Defense applies public-surface authority intelligence to real protocols. Research Note 001 is in preparation.
+            </p>
+            <p style={{ margin: 0, fontSize: 13, color: TEXT_FAINT, lineHeight: 1.6 }}>
+              Methodology, scope, and public-data boundaries are available now.
+            </p>
+          </div>
+          <Link href="/research" style={{
+            padding: "12px 20px",
+            borderRadius: 8,
+            border: `1px solid ${PURPLE_FAINT}`,
+            background: "rgba(139,92,246,0.08)",
+            color: PURPLE,
+            textDecoration: "none",
+            fontWeight: 700,
+            fontSize: 14,
+            whiteSpace: "nowrap" as const,
+          }}>
+            View research methodology
+          </Link>
+        </div>
+      </section>
+
       <section id="first-service-door" style={{
         scrollMarginTop: 96,
         position: "relative",
@@ -1625,7 +1722,7 @@ export default function HomePage() {
         <div className="fsd-grid" style={{
           display: "grid",
           gridTemplateColumns: "minmax(0, 5fr) minmax(0, 7fr)",
-          minHeight: 720,
+          minHeight: 520,
         }}>
           {/* Left: copy + illustration */}
           <div className="fsd-left" style={{
@@ -1648,7 +1745,7 @@ export default function HomePage() {
                 letterSpacing: "0.2em",
                 textTransform: "uppercase" as const,
                 color: PURPLE,
-              }}>First Service Door</span>
+              }}>Featured service powered by SCE</span>
               <span style={{
                 width: 6,
                 height: 6,
@@ -1668,7 +1765,7 @@ export default function HomePage() {
               letterSpacing: "-0.025em",
               color: TEXT,
             }}>
-              SCE Defense Review
+              Sagitta Defense Review
             </h2>
 
             {/* Colored subheadline */}
@@ -1680,8 +1777,8 @@ export default function HomePage() {
               color: TEXT,
             }}>
               A{" "}
-              <span style={PURPLE_GRADIENT_TEXT}>protocol survival</span>
-              {" "}review<br />before the emergency.
+              <span style={PURPLE_GRADIENT_TEXT}>protocol continuity</span>
+              {" "}review<br />powered by SCE.
             </p>
 
             <div style={{ width: 248, height: 3, background: `linear-gradient(90deg, ${PURPLE}, transparent)`, borderRadius: 2, marginBottom: 40 }} />
@@ -1694,11 +1791,11 @@ export default function HomePage() {
               color: TEXT_MUTED,
               maxWidth: 420,
             }}>
-              Built on the Sagitta Continuity Engine, the Defense Review maps your public protocol surface against authority-risk patterns, global incident families, continuity doctrine, and evidence gaps.
+              A protocol continuity review that turns SCE authority intelligence into a client-ready report. Defense Review is one output of the engine, not the engine itself.
             </p>
 
             {/* Illustration — fills the rest of the left column */}
-            <div style={{ flex: 1, position: "relative", minHeight: 280, overflow: "hidden" }}>
+            <div style={{ flex: 1, position: "relative", minHeight: 180, overflow: "hidden" }}>
               <Image
                 src="/section4-illustration.png"
                 alt=""
@@ -1726,10 +1823,10 @@ export default function HomePage() {
             justifyContent: "space-between",
             gap: 32,
           }}>
-            {/* 3 cards */}
-            <div className="fsd-cards" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, paddingTop: 120 }}>
+            {/* Output cards */}
+            <div className="fsd-cards" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, paddingTop: 24 }}>
 
-              {/* Pricing card */}
+              {/* Featured output card */}
               <div style={{
                 background: "linear-gradient(135deg, rgba(167,139,250,0.95) 0%, rgba(139,92,246,0.7) 35%, rgba(88,28,135,0.4) 70%, rgba(40,10,80,0.2) 100%)",
                 borderRadius: 20,
@@ -1793,25 +1890,24 @@ export default function HomePage() {
                 </div>
 
                 <div style={{ fontSize: 12, fontWeight: 600, color: TEXT_MUTED, marginBottom: 10, paddingRight: 40 }}>
-                  Starter Defense Review
+                  Featured service powered by SCE
                 </div>
-                <div style={{ fontSize: 36, fontWeight: 900, color: PURPLE, lineHeight: 1, marginBottom: 4 }}>$3,000</div>
+                <div style={{ fontSize: 25, fontWeight: 900, color: PURPLE, lineHeight: 1.1, marginBottom: 4 }}>Sagitta Defense Review</div>
                 <div style={{
                   height: 1,
                   background: `linear-gradient(90deg, rgba(139,92,246,0.3), transparent)`,
                   margin: "12px 0",
                 }} />
                 <div style={{ fontSize: 11, color: TEXT_FAINT, marginBottom: 14 }}>
-                  Up to 5 public contracts or assets
+                  Client-ready continuity report output
                 </div>
                 <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 8, flex: 1 }}>
                   {[
-                    "Public asset mapping",
-                    "Authority-risk findings",
-                    "Relevant threat-family mapping",
-                    "Recommended controls",
-                    "Evidence and verification tracking",
-                    "Client-ready report",
+                    "SCE authority intelligence",
+                    "Sample report proof point",
+                    "Shared-owner concentration across 4 mapped assets",
+                    "Observed owner evidence separated from verified controls",
+                    "Delivered through defense.sagitta.systems",
                   ].map((item) => (
                     <li key={item} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: TEXT_MUTED }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}>
@@ -1825,7 +1921,7 @@ export default function HomePage() {
               </div>
               </div>
 
-              {/* What You Provide card */}
+              {/* SCE capabilities card */}
               <div style={{
                 background: "linear-gradient(135deg, rgba(139,92,246,0.55) 0%, rgba(100,60,200,0.25) 45%, rgba(60,20,120,0.1) 100%)",
                 borderRadius: 17,
@@ -1847,7 +1943,7 @@ export default function HomePage() {
                   marginBottom: 20,
                 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.14em", color: PURPLE, textTransform: "uppercase" as const }}>
-                    What You Provide
+                    SCE capabilities
                   </div>
                   <div style={{
                     width: 32,
@@ -1867,11 +1963,11 @@ export default function HomePage() {
                 </div>
                 <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 14, flex: 1 }}>
                   {[
-                    { label: "Project name", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
-                    { label: "Chain / network", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.8"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> },
-                    { label: "Explorer links", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.8"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> },
-                    { label: "Docs / repo", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.8"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> },
-                    { label: "Optional admin evidence", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.8"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
+                    { label: "Case Library", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> },
+                    { label: "Threat Matrix", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg> },
+                    { label: "Admin Surface Scanner", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
+                    { label: "Authority Path Mapping", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.8"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> },
+                    { label: "Evidence Reports", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.8"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
                   ].map(({ label, icon }) => (
                     <li key={label} style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 12, color: TEXT_MUTED }}>
                       <span style={{ flexShrink: 0 }}>{icon}</span>
@@ -1882,7 +1978,7 @@ export default function HomePage() {
               </div>
               </div>
 
-              {/* What You Receive card */}
+              {/* Services card */}
               <div style={{
                 background: "linear-gradient(135deg, rgba(139,92,246,0.55) 0%, rgba(100,60,200,0.25) 45%, rgba(60,20,120,0.1) 100%)",
                 borderRadius: 17,
@@ -1904,7 +2000,7 @@ export default function HomePage() {
                   marginBottom: 20,
                 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "0.14em", color: PURPLE, textTransform: "uppercase" as const }}>
-                    What You Receive
+                    Services
                   </div>
                   <div style={{
                     width: 32,
@@ -1924,11 +2020,11 @@ export default function HomePage() {
                 </div>
                 <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 14, flex: 1 }}>
                   {[
-                    "Mapped assets",
-                    "Authority findings",
-                    "Controls",
-                    "Verification status",
-                    "Next actions",
+                    "Defense Review service",
+                    "More SCE-powered services to come",
+                    "Public research proof surfaces",
+                    "Dashboard intelligence",
+                    "Evidence status views",
                   ].map((label) => (
                     <li key={label} style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 12, color: TEXT_MUTED }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" style={{ flexShrink: 0 }}>
@@ -1945,7 +2041,7 @@ export default function HomePage() {
 
             {/* CTAs */}
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" as const }}>
-              <a href="mailto:sce@sagitta.systems?subject=SCE%20Defense%20Review%20Request" style={{
+              <a href="https://defense.sagitta.systems" style={{
                 flex: 1,
                 padding: "14px 24px",
                 borderRadius: 10,
@@ -1961,9 +2057,9 @@ export default function HomePage() {
                 whiteSpace: "nowrap" as const,
                 minWidth: 200,
               }}>
-                Request Defense Review &nbsp;→
+                View Defense Review &nbsp;→
               </a>
-              <a href="#how-sce-works" style={{
+              <a href="/sample-review.pdf" target="_blank" rel="noopener noreferrer" style={{
                 flex: 1,
                 padding: "14px 24px",
                 borderRadius: 10,
@@ -1980,7 +2076,7 @@ export default function HomePage() {
                 whiteSpace: "nowrap" as const,
                 minWidth: 160,
               }}>
-                View How It Works &nbsp;→
+                View sample report &nbsp;→
               </a>
             </div>
 
@@ -2003,7 +2099,7 @@ export default function HomePage() {
                 </svg>
               </div>
               <span style={{ fontSize: 12, color: TEXT_FAINT, lineHeight: 2.6 }}>
-                Manual service. Powered internally by Sagitta Continuity Engine (SCE).
+                Defense Review is one service output powered by the Sagitta Continuity Engine.
                 No keys. No wallet access. No signing rights.
               </span>
             </div>
@@ -2023,9 +2119,9 @@ export default function HomePage() {
                 <polyline points="14 2 14 8 20 8"/>
               </svg>
               <span style={{ fontSize: 12, color: TEXT_FAINT, lineHeight: 1.5 }}>
-                Proof asset: sample Pre-Launch Defense Review available.{" "}
+                Proof asset: shared-owner concentration across 4 mapped assets.{" "}
                 <a href="/sample-review.pdf" target="_blank" rel="noopener noreferrer" style={{ color: GOLD_DIM, textDecoration: "underline", fontWeight: 600 }}>
-                  Review the demo PDF before requesting a Defense Review.
+                  View sample report.
                 </a>
               </span>
             </div>
@@ -2055,7 +2151,7 @@ export default function HomePage() {
               letterSpacing: "0.22em",
               textTransform: "uppercase" as const,
               color: PURPLE,
-            }}>Questions Before Review</span>
+            }}>Questions About SCE</span>
             <div style={{ width: 32, height: 1, background: `linear-gradient(90deg, ${PURPLE}, transparent)` }} />
           </div>
           <h2 style={{
@@ -2075,7 +2171,7 @@ export default function HomePage() {
             color: TEXT_MUTED,
             maxWidth: 520,
           }}>
-            Clear answers for teams evaluating an SCE Defense Review.
+            Clear answers for teams evaluating the Sagitta Continuity Engine and its outputs.
           </p>
         </div>
 
@@ -2095,8 +2191,8 @@ export default function HomePage() {
               a: "No. Never. SCE does not request private keys, seed phrases, custody access, signing authority, or transaction approval rights.",
             },
             {
-              q: "What do we need to provide?",
-              a: "At minimum, provide contract addresses, deployment chain, project context, and any known admin, multisig, timelock, oracle, treasury, keeper, or governance configuration. Optional evidence can include policy documents, multisig screenshots, governance proposals, runbooks, emergency procedures, or links to public documentation.",
+              q: "What does SCE ingest?",
+              a: "SCE ingests public incidents, CVEs, advisories, GitHub advisory records, DeFi incident patterns, public contract metadata, and operator-provided public evidence.",
             },
             {
               q: "Is this useful before mainnet?",
@@ -2107,8 +2203,8 @@ export default function HomePage() {
               a: "Active now: EVM and Ethereum-compatible deployments where public contract data, explorer records, or project-submitted details are available. Coverage targets: Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche C-Chain, BNB Chain, Moonbeam. Expansion targets: Solana, AO / Arweave, ICP, Cosmos, bridges, and oracle networks through future chain-specific adapters.",
             },
             {
-              q: "What do we receive?",
-              a: "You receive a structured Defense Review report covering mapped assets, control findings, threat-family relevance, evidence status, severity framing, and next actions. When evidence is submitted, SCE can generate an updated report showing improved verification coverage.",
+              q: "What outputs does SCE power?",
+              a: "SCE powers dashboard intelligence, threat-matrix views, evidence reports, Defense Review service reports, and lightweight public research methodology pages.",
             },
             {
               q: "Does SCE certify that our protocol is safe?",
@@ -2116,7 +2212,7 @@ export default function HomePage() {
             },
             {
               q: "Who is this for?",
-              a: "SCE Defense Reviews are built for protocol teams, DAOs, DeFi systems, treasury-heavy projects, grant programs, ecosystem foundations, and infrastructure teams that need a clearer view of control failure, authority concentration, oracle risk, treasury posture, and emergency readiness.",
+              a: "SCE is built for protocol teams, DAOs, DeFi systems, treasury-heavy projects, grant programs, ecosystem foundations, and infrastructure teams that need a clearer view of control failure, authority concentration, oracle risk, treasury posture, and emergency readiness.",
             },
             {
               q: "How is this different from monitoring tools?",
@@ -2213,9 +2309,9 @@ export default function HomePage() {
           {/* Headline */}
           <div style={{ flex: 1, minWidth: 240 }}>
             <p style={{ margin: 0, fontSize: "clamp(16px, 1.8vw, 22px)", fontWeight: 800, lineHeight: 1.3, color: TEXT }}>
-              Do not wait for your incident<br />
-              to reveal your{" "}
-              <span style={PURPLE_GRADIENT_TEXT}>control gaps.</span>
+              Map authority paths, threat families,<br />
+              and{" "}
+              <span style={PURPLE_GRADIENT_TEXT}>evidence gaps.</span>
             </p>
           </div>
 
@@ -2224,7 +2320,7 @@ export default function HomePage() {
 
           {/* Buttons */}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", flexShrink: 0 }}>
-            <a href="mailto:sce@sagitta.systems?subject=SCE%20Defense%20Review%20Request" style={{
+            <a href="#how-sce-works" style={{
               padding: "13px 22px",
               borderRadius: 10,
               background: "#D4AF37",
@@ -2237,7 +2333,7 @@ export default function HomePage() {
               alignItems: "center",
               gap: 8,
             }}>
-              Request Defense Review &nbsp;→
+              Explore SCE &nbsp;→
             </a>
             <Link href="/login" style={{
               padding: "13px 22px",
@@ -2305,7 +2401,7 @@ export default function HomePage() {
                 { label: "Overview", href: "#overview" },
                 { label: "Continuity Mandate", href: "#continuity-mandate" },
                 { label: "How SCE Works", href: "#how-sce-works" },
-                { label: "Defense Review", href: "#first-service-door" },
+                { label: "Powered Outputs", href: "#first-service-door" },
               ].map(({ label, href }) => (
                 <a key={label} href={href} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: TEXT_MUTED, textDecoration: "none" }}>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="2.5" style={{ flexShrink: 0 }}>
@@ -2327,7 +2423,7 @@ export default function HomePage() {
                 { label: "Resource Hub", href: "/resources" },
                 { label: "Guides & Playbooks", href: "/resources" },
                 { label: "Incident Readiness", href: "/resources" },
-                { label: "Research & Updates", href: "/resources" },
+                { label: "Research & Updates", href: "/research" },
               ].map(({ label, href }) => (
                 <a key={label} href={href} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: TEXT_MUTED, textDecoration: "none" }}>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="2.5" style={{ flexShrink: 0 }}>

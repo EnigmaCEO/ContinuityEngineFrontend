@@ -93,6 +93,12 @@ export async function createProject(payload: {
   });
 }
 
+export async function archiveProject(projectId: string): Promise<Project> {
+  return api<Project>(`/projects/${projectId}`, {
+    method: "DELETE",
+  });
+}
+
 export async function fetchProjectAssets(projectId: string, limit = 100): Promise<ProjectAsset[]> {
   const response = await api<{ items: ProjectAsset[] }>(withLimit(`/projects/${projectId}/assets`, limit), { cache: "no-store" });
   return response.items;
