@@ -44,7 +44,7 @@ const STATIC_STATUSES: ArchiveFacetOption[] = [
   { value: "ingested", label: "Ingested", count: 0 },
   { value: "normalized", label: "Normalized", count: 0 },
   { value: "classified", label: "Classified", count: 0 },
-  { value: "replay_ready", label: "Replay Ready", count: 0 },
+  { value: "replay_ready", label: "Validation Ready", count: 0 },
   { value: "doctrine_tagged", label: "Doctrine Tagged", count: 0 },
   { value: "verified", label: "Verified", count: 0 },
   { value: "needs_review", label: "Needs Review", count: 0 },
@@ -96,13 +96,13 @@ function replayLabel(status: ReplayStatus): string {
     case "passed":
       return "Case Indexed";
     case "available":
-      return "Awaiting Replay";
+      return "Awaiting Validation";
     case "failed":
-      return "Replay Failed";
+      return "Validation Failed";
     case "pending":
-      return "Replay Pending";
+      return "Validation Pending";
     default:
-      return "No Replay";
+      return "No Validation";
   }
 }
 

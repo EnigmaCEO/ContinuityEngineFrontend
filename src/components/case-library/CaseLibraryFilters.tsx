@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { Search, XCircle, Calendar } from 'lucide-react';
-import type { ArchiveFacetOption, CaseSeverity, ReplayStatus, DoctrineStatus, CaseStatus } from '@/lib/case-library/types';
+import type { ArchiveFacetOption, CasePriorityBand, CaseSeverity, ReplayStatus, DoctrineStatus, CaseStatus } from '@/lib/case-library/types';
 import { CLR } from '@/lib/case-library/utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -16,6 +16,7 @@ export interface FilterState {
   replayStatus:   ReplayStatus | '';
   doctrineStatus: DoctrineStatus | '';
   status:         CaseStatus | '';
+  priorityBand:   CasePriorityBand | '';
   ingestedFrom:   string;
   ingestedTo:     string;
   datePreset:     DatePreset;
@@ -33,6 +34,24 @@ interface Props {
   doctrineStatuses: ArchiveFacetOption[];
   caseStatuses:     ArchiveFacetOption[];
   facetsLoading?: boolean;
+}
+
+const PRIORITY_OPTIONS: ArchiveFacetOption[] = [
+  { value: 'critical', label: 'Priority Critical', count: 0 },
+  { value: 'high', label: 'Priority High', count: 0 },
+  { value: 'medium', label: 'Priority Medium', count: 0 },
+  { value: 'low', label: 'Priority Low', count: 0 },
+];
+
+function validationVocabulary(text: string): string {
+  return text
+    .replaceAll('replayed', 'validated')
+    .replaceAll('Replayable', 'Ready for Validation')
+    .replaceAll('replayable', 'ready for validation')
+    .replaceAll('replaying', 'validating')
+    .replaceAll('Replay', 'Validation')
+    .replaceAll('replay', 'validation')
+    .replaceAll('REPLAY', 'VALIDATION');
 }
 
 // ─── Date preset helpers ──────────────────────────────────────────────────────
@@ -90,7 +109,7 @@ function Select({
       <option value="">{disabled ? `${placeholder} loading` : placeholder}</option>
       {visibleOptions.map((o) => (
         <option key={o.value} value={o.value}>
-          {o.count > 0 ? `${o.label} (${o.count})` : o.label}
+          {o.count > 0 ? `${validationVocabulary(o.label)} (${o.count})` : validationVocabulary(o.label)}
         </option>
       ))}
     </select>
@@ -127,7 +146,7 @@ export function CaseLibraryFilters({
   const hasFilters = (
     !!filters.search || !!filters.severity || !!filters.type ||
     !!filters.source || !!filters.chainSystem || !!filters.replayStatus ||
-    !!filters.doctrineStatus || !!filters.status ||
+    !!filters.doctrineStatus || !!filters.status || !!filters.priorityBand ||
     !!filters.ingestedFrom || !!filters.ingestedTo
   );
 
@@ -189,6 +208,12 @@ export function CaseLibraryFilters({
           disabled={facetsLoading && severities.length === 0}
         />
         <Select
+          value={filters.priorityBand}
+          onChange={(v) => onChange({ priorityBand: v as CasePriorityBand | '' })}
+          options={PRIORITY_OPTIONS}
+          placeholder="Priority"
+        />
+        <Select
           value={filters.type}
           onChange={(v) => onChange({ type: v })}
           options={uniqueTypes}
@@ -213,7 +238,7 @@ export function CaseLibraryFilters({
           value={filters.replayStatus}
           onChange={(v) => onChange({ replayStatus: v as ReplayStatus | '' })}
           options={replayStatuses}
-          placeholder="Replay"
+          placeholder="Validation"
           disabled={facetsLoading && replayStatuses.length === 0}
         />
         <Select

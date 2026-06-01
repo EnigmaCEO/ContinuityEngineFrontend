@@ -7,6 +7,7 @@ import type {
   CaseLibraryRecord,
   ArchiveFacetsResponse,
   SourceSyncResult,
+  SourceProviderStatus,
   BatchEnrichmentResult,
   BatchReplayResult,
   EligibilityRefreshResult,
@@ -86,6 +87,7 @@ export async function fetchCases(params: CaseLibraryTableParams): Promise<CaseLi
   if (params.replayStatus)   url.searchParams.set('replayStatus',   params.replayStatus);
   if (params.doctrineStatus) url.searchParams.set('doctrineStatus', params.doctrineStatus);
   if (params.status)         url.searchParams.set('status',         params.status);
+  if (params.priorityBand)   url.searchParams.set('priorityBand',   params.priorityBand);
   if (params.ingestedFrom)   url.searchParams.set('ingestedFrom',   params.ingestedFrom);
   if (params.ingestedTo)     url.searchParams.set('ingestedTo',     params.ingestedTo);
   if (params.updatedFrom)    url.searchParams.set('updatedFrom',    params.updatedFrom);
@@ -132,6 +134,14 @@ export async function fetchActivity(limit = 25): Promise<CaseLibraryActivityItem
   return res.json() as Promise<CaseLibraryActivityItem[]>;
 }
 
+// ─── Provider status ─────────────────────────────────────────────────────────
+
+export async function fetchProviderStatus(): Promise<SourceProviderStatus[]> {
+  const res = await fetch(`${API_BASE}/case-library/provider-status`);
+  if (!res.ok) throw new Error(`provider-status fetch failed: ${res.status}`);
+  return res.json() as Promise<SourceProviderStatus[]>;
+}
+
 // ─── Metrics ──────────────────────────────────────────────────────────────────
 
 export async function fetchMetrics(): Promise<CaseLibraryMetrics> {
@@ -159,7 +169,6 @@ export async function triggerSync(): Promise<SourceSyncResult | void> {
       ...(sessionToken ? { 'X-SCE-Session': sessionToken } : {}),
     },
     body: JSON.stringify({
-      sourceTypes:          ['cisa_kev', 'nvd_cve', 'github_advisories', 'defi_rekt'],
       autoNormalize:        true,
       autoClassify:         true,
       autoEnrichDoctrine:   true,
@@ -190,10 +199,14 @@ export async function ingestCase(payload?: unknown): Promise<void> {
 // ─── Doctrine enrichment ──────────────────────────────────────────────────────
 
 export async function enrichDoctrine(caseId: string): Promise<CaseLibraryRecord> {
-  const res = await fetch(`${API_BASE}/case-library/${caseId}/enrich-doctrine`, {
+  const sessionToken = getSessionToken();
+  const res = await fetch(`/api/case-library/${encodeURIComponent(caseId)}/enrich-doctrine`, {
     method: 'POST',
+    headers: {
+      ...(sessionToken ? { 'X-SCE-Session': sessionToken } : {}),
+    },
   });
-  if (!res.ok) throw new Error(`enrich-doctrine failed: ${res.status}`);
+  if (!res.ok) throw new Error(await errorMessage(res, 'Doctrine enrichment failed'));
   return res.json() as Promise<CaseLibraryRecord>;
 }
 
@@ -208,26 +221,39 @@ export async function batchEnrichDoctrine(limit = 50): Promise<BatchEnrichmentRe
 // ─── Replay ───────────────────────────────────────────────────────────────────
 
 export async function runReplay(caseId: string): Promise<CaseLibraryRecord> {
-  const res = await fetch(`${API_BASE}/case-library/${caseId}/run-replay`, {
+  const sessionToken = getSessionToken();
+  const res = await fetch(`/api/case-library/${encodeURIComponent(caseId)}/run-replay`, {
     method: 'POST',
+    headers: {
+      ...(sessionToken ? { 'X-SCE-Session': sessionToken } : {}),
+    },
   });
-  if (!res.ok) throw new Error(`run-replay failed: ${res.status}`);
+  if (!res.ok) throw new Error(await errorMessage(res, 'Validation failed'));
   return res.json() as Promise<CaseLibraryRecord>;
 }
 
 export async function batchRunReplay(limit = 50): Promise<BatchReplayResult> {
-  const url = new URL(`${API_BASE}/case-library/replay/batch`);
-  url.searchParams.set('limit', String(limit));
-  const res = await fetch(url.toString(), { method: 'POST' });
-  if (!res.ok) throw new Error(`batch replay failed: ${res.status}`);
+  const sessionToken = getSessionToken();
+  const params = new URLSearchParams({ limit: String(limit) });
+  const res = await fetch(`/api/case-library/replay/batch?${params.toString()}`, {
+    method: 'POST',
+    headers: {
+      ...(sessionToken ? { 'X-SCE-Session': sessionToken } : {}),
+    },
+  });
+  if (!res.ok) throw new Error(await errorMessage(res, 'Batch validation failed'));
   return res.json() as Promise<BatchReplayResult>;
 }
 
 export async function refreshReplayEligibility(): Promise<EligibilityRefreshResult> {
-  const res = await fetch(`${API_BASE}/case-library/replay/refresh-eligibility`, {
+  const sessionToken = getSessionToken();
+  const res = await fetch('/api/case-library/replay/refresh-eligibility', {
     method: 'POST',
+    headers: {
+      ...(sessionToken ? { 'X-SCE-Session': sessionToken } : {}),
+    },
   });
-  if (!res.ok) throw new Error(`refresh-eligibility failed: ${res.status}`);
+  if (!res.ok) throw new Error(await errorMessage(res, 'Validation eligibility refresh failed'));
   return res.json() as Promise<EligibilityRefreshResult>;
 }
 
@@ -248,6 +274,7 @@ function sourceValue(source: string): string {
     'NVD CVE': 'nvd_cve',
     'CISA KEV': 'cisa_kev',
     'De.Fi REKT': 'defi_rekt',
+    OSV: 'osv',
   };
   return known[source] ?? source.toLowerCase().replaceAll('.', '').replaceAll('/', '_').replaceAll('-', '_').replaceAll(' ', '_');
 }
@@ -258,6 +285,7 @@ function labelFor(value: string): string {
     nvd_cve: 'NVD CVE',
     cisa_kev: 'CISA KEV',
     defi_rekt: 'De.Fi REKT',
+    osv: 'OSV',
   };
   return known[value] ?? value.replaceAll('_', ' ').replaceAll('-', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }

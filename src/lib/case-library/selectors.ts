@@ -18,7 +18,7 @@ export function applyTableParams(
 ): CaseLibraryTableResponse {
   const {
     search, severity, type, source, chainSystem,
-    replayStatus, doctrineStatus,
+    replayStatus, doctrineStatus, priorityBand,
     page, pageSize, sortBy, sortDir,
   } = params;
 
@@ -33,12 +33,13 @@ export function applyTableParams(
     if (chainSystem  && c.chainSystem   !== chainSystem)   return false;
     if (replayStatus && c.replayStatus  !== replayStatus)  return false;
     if (doctrineStatus && c.doctrineStatus !== doctrineStatus) return false;
+    if (priorityBand && c.priorityBand !== priorityBand) return false;
     return true;
   });
 
   const sorted = [...filtered].sort((a, b) => {
-    const av = String(a[sortBy] ?? '');
-    const bv = String(b[sortBy] ?? '');
+    const av = sortBy === 'priorityScore' ? (a.priorityScore ?? 0) : String(a[sortBy] ?? '');
+    const bv = sortBy === 'priorityScore' ? (b.priorityScore ?? 0) : String(b[sortBy] ?? '');
     const cmp = av < bv ? -1 : av > bv ? 1 : 0;
     return sortDir === 'asc' ? cmp : -cmp;
   });
@@ -130,12 +131,14 @@ export function computeMetrics(cases: CaseLibraryRecord[]): CaseLibraryMetrics {
   const n = cases.length || 1;
 
   const severityMap = { critical: 0, high: 0, medium: 0, low: 0 };
+  const priorityMap = { critical: 0, high: 0, medium: 0, low: 0 };
   const sourceMap: Record<string, number> = {};
   const rp = { available: 0, missing: 0, passed: 0, failed: 0, pending: 0 };
   const dt = { linked: 0, updated: 0, pending: 0, none: 0 };
 
   for (const c of cases) {
     severityMap[c.severity]++;
+    priorityMap[c.priorityBand ?? 'low']++;
     const countedSources = c.sources && c.sources.length > 0
       ? new Set([c.source, ...c.sources])
       : new Set([c.source]);
@@ -163,6 +166,8 @@ export function computeMetrics(cases: CaseLibraryRecord[]): CaseLibraryMetrics {
 
   return {
     sourceBreakdown,
+    priorityDistribution: (Object.entries(priorityMap) as [CaseSeverity, number][])
+      .map(([priorityBand, count]) => ({ priorityBand, count })),
     severityDistribution: (Object.entries(severityMap) as [CaseSeverity, number][])
       .map(([severity, count]) => ({ severity, count })),
     replayStats: { ...rp, coveragePct: Math.round((replayReady / n) * 100) },

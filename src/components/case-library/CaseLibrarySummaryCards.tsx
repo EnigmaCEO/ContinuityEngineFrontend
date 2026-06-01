@@ -134,7 +134,7 @@ export function CaseLibrarySummaryCards({ stats, loading }: Props) {
     const d = stats?.pendingDoctrineCount ?? 0;
     const v = stats?.pendingReviewCount   ?? 0;
     const f = stats?.failedIngestionCount ?? 0;
-    const parts = [`Replay ${r}`, `Doctrine ${d}`, `Review ${v}`];
+    const parts = [`Validation ${r}`, `Doctrine ${d}`, `Review ${v}`];
     if (f > 0) parts.push(`Failed ${f}`);
     return parts.join(' · ');
   })();
@@ -145,7 +145,7 @@ export function CaseLibrarySummaryCards({ stats, loading }: Props) {
     const r = stats?.pendingReplayCount ?? 0;
     const v = stats?.pendingReviewCount ?? 0;
     if (d > 0) return 'Doctrine enrichment queued';
-    if (r > 0) return 'Replay coverage gap';
+    if (r > 0) return 'Validation coverage gap';
     if (v > 0) return 'Review required';
     return 'No pending actions';
   })();

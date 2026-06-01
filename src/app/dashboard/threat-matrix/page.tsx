@@ -9,6 +9,17 @@ import { CARD_STYLE, CLR, formatTs, replayColor, severityColor } from "@/lib/cas
 type SeverityFilter = CaseSeverity | "all";
 type ReplayFilter = ReplayStatus | "all";
 
+function validationVocabulary(text: string): string {
+  return text
+    .replaceAll("replayed", "validated")
+    .replaceAll("Replayable", "Ready for Validation")
+    .replaceAll("replayable", "ready for validation")
+    .replaceAll("replaying", "validating")
+    .replaceAll("Replay", "Validation")
+    .replaceAll("replay", "validation")
+    .replaceAll("REPLAY", "VALIDATION");
+}
+
 export default function ThreatMatrixPage() {
   const [data, setData] = useState<ThreatMatrixOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,7 +108,7 @@ export default function ThreatMatrixPage() {
         {[
           { label: "Active Threat Families", value: data?.activeThreatFamilies ?? 0, tone: CLR.gold },
           { label: "Critical Exposure", value: data?.criticalExposure ?? 0, tone: CLR.red },
-          { label: "Replay Gaps", value: data?.replayGaps ?? 0, tone: CLR.orange },
+          { label: "Validation Gaps", value: data?.replayGaps ?? 0, tone: CLR.orange },
           { label: "Highest Threat Score", value: data?.highestThreatScore ?? 0, tone: CLR.text },
         ].map((card) => (
           <div key={card.label} style={{ ...CARD_STYLE, padding: "16px 18px" }}>
@@ -129,9 +140,9 @@ export default function ThreatMatrixPage() {
                 <option value="low">Low</option>
               </select>
               <select value={replayStatus} onChange={(e) => setReplayStatus(e.target.value as ReplayFilter)} style={selectStyle}>
-                <option value="all">All Replay</option>
-                <option value="passed">Replay Passed</option>
-                <option value="missing">Replay Missing</option>
+                <option value="all">All Validation</option>
+                <option value="passed">Validation Passed</option>
+                <option value="missing">Validation Missing</option>
               </select>
               <select value={source} onChange={(e) => setSource(e.target.value)} style={selectStyle}>
                 {sourceOptions.map((option) => (
@@ -145,7 +156,7 @@ export default function ThreatMatrixPage() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "rgba(212,175,55,0.04)" }}>
-                  {["Threat Family", "Cases", "Critical", "Replay Coverage", "Doctrine Coverage", "Threat Score", "Top Doctrine Tags", "Top Actions"].map((label) => (
+                  {["Threat Family", "Cases", "Critical", "Validation Coverage", "Doctrine Coverage", "Threat Score", "Top Doctrine Tags", "Top Actions"].map((label) => (
                     <th key={label} style={thStyle}>{label}</th>
                   ))}
                 </tr>
@@ -185,19 +196,19 @@ export default function ThreatMatrixPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginBottom: 14 }}>
               <StatPill label="Critical" value={selected.criticalCount} tone={severityColor("critical")} />
               <StatPill label="High" value={selected.highCount} tone={severityColor("high")} />
-              <StatPill label="Replay Passed" value={selected.replayPassed} tone={replayColor("passed")} />
-              <StatPill label="Replay Missing" value={selected.replayMissing} tone={replayColor("missing")} />
+              <StatPill label="Validation Passed" value={selected.replayPassed} tone={replayColor("passed")} />
+              <StatPill label="Validation Missing" value={selected.replayMissing} tone={replayColor("missing")} />
             </div>
 
             <DetailSection title="Summary" icon={<ShieldAlert size={13} style={{ color: CLR.gold }} />}>
-              <div style={{ color: CLR.text, fontSize: 12, lineHeight: 1.55 }}>{selected.summary}</div>
+              <div style={{ color: CLR.text, fontSize: 12, lineHeight: 1.55 }}>{validationVocabulary(selected.summary)}</div>
             </DetailSection>
             <DetailList title="Top Cases" items={selected.topCases} empty="No related cases." mono />
             <DetailList title="Doctrine Tags" items={selected.doctrineTags} empty="No doctrine tags recorded." mono />
             <DetailList title="Recommended Actions" items={selected.recommendedActions} empty="No recommended actions recorded." />
             <DetailList title="Continuity Implications" items={selected.continuityImplications} empty="No continuity implications recorded." />
-            <DetailSection title="Replay Gap Explanation">
-              <div style={{ color: CLR.text, fontSize: 12, lineHeight: 1.55 }}>{selected.replayGapExplanation}</div>
+            <DetailSection title="Validation Gap Explanation">
+              <div style={{ color: CLR.text, fontSize: 12, lineHeight: 1.55 }}>{validationVocabulary(selected.replayGapExplanation)}</div>
             </DetailSection>
             <DetailList title="Related Sources" items={selected.relatedSources} empty="No related sources recorded." />
 

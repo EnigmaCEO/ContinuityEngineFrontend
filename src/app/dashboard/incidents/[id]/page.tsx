@@ -12,8 +12,8 @@ import { CLR, doctrineColor, formatTs } from "@/lib/case-library/utils";
 
 function replayLabel(status?: ReplayStatus): string {
   if (status === "passed") return "Case Indexed";
-  if (status === "failed") return "Replay Failed";
-  return "Replay Pending";
+  if (status === "failed") return "Validation Failed";
+  return "Validation Pending";
 }
 
 function replayColor(status?: ReplayStatus): string {
@@ -21,6 +21,17 @@ function replayColor(status?: ReplayStatus): string {
   if (status === "failed") return CLR.red;
   if (status === "available") return CLR.blue;
   return CLR.gold;
+}
+
+function validationVocabulary(text: string): string {
+  return text
+    .replaceAll("replayed", "validated")
+    .replaceAll("Replayable", "Ready for Validation")
+    .replaceAll("replayable", "ready for validation")
+    .replaceAll("replaying", "validating")
+    .replaceAll("Replay", "Validation")
+    .replaceAll("replay", "validation")
+    .replaceAll("REPLAY", "VALIDATION");
 }
 
 function coverageLabel(status?: DoctrineStatus): string {
@@ -372,12 +383,12 @@ export default function IncidentDetailPage() {
               </div>
             </Section>
 
-            <Section title="Replay And Coverage">
+            <Section title="Validation And Coverage">
               <div style={{ display: "grid", gap: 14 }}>
-                <Field label="Replay Validation">
+                <Field label="Validation Status">
                   <Pill label={replayLabel(record.replayStatus)} color={replayColor(record.replayStatus)} />
                   {record.replaySummary && (
-                    <div style={{ color: CLR.muted, fontSize: 10.5, marginTop: 8 }}>{record.replaySummary}</div>
+                    <div style={{ color: CLR.muted, fontSize: 10.5, marginTop: 8 }}>{validationVocabulary(record.replaySummary)}</div>
                   )}
                 </Field>
                 <Field label="Response Coverage">

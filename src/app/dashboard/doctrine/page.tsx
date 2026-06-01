@@ -13,6 +13,17 @@ function kpiLabel(value: number, suffix = "") {
   return `${value.toLocaleString()}${suffix}`;
 }
 
+function validationVocabulary(text: string): string {
+  return text
+    .replaceAll("replayed", "validated")
+    .replaceAll("Replayable", "Ready for Validation")
+    .replaceAll("replayable", "ready for validation")
+    .replaceAll("replaying", "validating")
+    .replaceAll("Replay", "Validation")
+    .replaceAll("replay", "validation")
+    .replaceAll("REPLAY", "VALIDATION");
+}
+
 export default function DoctrineEnginePage() {
   const [data, setData] = useState<DoctrineOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -87,7 +98,7 @@ export default function DoctrineEnginePage() {
                   </span>
                 </div>
                 <p style={{ margin: "4px 0 0", color: "rgba(226,232,240,0.72)", fontSize: 12 }}>
-                  Global continuity doctrine learned from incidents, advisories, and replay outcomes.
+                  Global continuity doctrine learned from incidents, advisories, and validation outcomes.
                 </p>
               </div>
             </div>
@@ -106,7 +117,7 @@ export default function DoctrineEnginePage() {
         {[
           { label: "Doctrine Tags", value: kpiLabel(data?.totalDoctrineTags ?? 0), tone: CLR.gold },
           { label: "Doctrine-Covered Cases", value: kpiLabel(data?.totalDoctrineCoveredCases ?? 0), tone: CLR.text },
-          { label: "Replay-Validated Doctrine", value: kpiLabel(data?.totalReplayedDoctrineCases ?? 0), tone: CLR.green },
+          { label: "Validation-Checked Doctrine", value: kpiLabel(data?.totalReplayedDoctrineCases ?? 0), tone: CLR.green },
           { label: "Coverage Gaps", value: kpiLabel(coverageGaps), tone: coverageGaps > 0 ? CLR.orange : CLR.green },
         ].map((card) => (
           <div key={card.label} style={{ ...CARD_STYLE, padding: "16px 18px" }}>
@@ -141,9 +152,9 @@ export default function DoctrineEnginePage() {
                 <option value="high">High</option>
               </select>
               <select value={replayStatus} onChange={(e) => setReplayStatus(e.target.value as ReplayFilter)} style={selectStyle}>
-                <option value="all">All Replay</option>
-                <option value="passed">Replay Passed</option>
-                <option value="missing">Replay Missing</option>
+                <option value="all">All Validation</option>
+                <option value="passed">Validation Passed</option>
+                <option value="missing">Validation Missing</option>
               </select>
             </div>
           </div>
@@ -152,7 +163,7 @@ export default function DoctrineEnginePage() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "rgba(212,175,55,0.04)" }}>
-                  {["Doctrine Tag", "Cases", "Critical", "Replay Passed", "Replay Missing", "Confidence", "Top Actions"].map((label) => (
+                  {["Doctrine Tag", "Cases", "Critical", "Validation Passed", "Validation Missing", "Confidence", "Top Actions"].map((label) => (
                     <th key={label} style={thStyle}>{label}</th>
                   ))}
                 </tr>
@@ -216,8 +227,8 @@ export default function DoctrineEnginePage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginBottom: 14 }}>
               <StatPill label="Critical" value={selected.criticalCount} tone={severityColor("critical")} />
               <StatPill label="High" value={selected.highCount} tone={severityColor("high")} />
-              <StatPill label="Replay Passed" value={selected.replayPassed} tone={replayColor("passed")} />
-              <StatPill label="Replay Missing" value={selected.replayMissing} tone={replayColor("missing")} />
+              <StatPill label="Validation Passed" value={selected.replayPassed} tone={replayColor("passed")} />
+              <StatPill label="Validation Missing" value={selected.replayMissing} tone={replayColor("missing")} />
             </div>
 
             <DetailBlock title="Top Recommended Actions" items={selected.recommendedActions} empty="No actions recorded." />
@@ -230,14 +241,14 @@ export default function DoctrineEnginePage() {
             />
 
             <div style={{ marginTop: 16, padding: "12px 14px", borderRadius: 8, border: `1px solid ${CLR.border}`, background: "rgba(255,255,255,0.02)" }}>
-              <div style={{ color: CLR.gold, fontSize: 10, textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 6 }}>Replay Gap Summary</div>
-              <div style={{ color: CLR.text, fontSize: 12, lineHeight: 1.55 }}>{selected.replayGapSummary}</div>
+              <div style={{ color: CLR.gold, fontSize: 10, textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 6 }}>Validation Gap Summary</div>
+              <div style={{ color: CLR.text, fontSize: 12, lineHeight: 1.55 }}>{validationVocabulary(selected.replayGapSummary)}</div>
               <div style={{ color: CLR.muted, fontSize: 10.5, marginTop: 10 }}>Last Updated {formatTs(selected.lastUpdated)}</div>
             </div>
 
             {(data?.replayCoverageByDoctrineTag ?? []).some((item) => item.tag === selected.tag) && (
               <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${CLR.border}` }}>
-                <div style={{ color: CLR.gold, fontSize: 10, textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 8 }}>Replay Coverage</div>
+                <div style={{ color: CLR.gold, fontSize: 10, textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 8 }}>Validation Coverage</div>
                 {data?.replayCoverageByDoctrineTag.filter((item) => item.tag === selected.tag).map((item) => (
                   <div key={item.tag} style={{ display: "flex", justifyContent: "space-between", color: CLR.text, fontSize: 11.5 }}>
                     <span>{item.replayPassed} passed / {item.replayMissing} missing</span>

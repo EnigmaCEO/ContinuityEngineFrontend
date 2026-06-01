@@ -66,7 +66,7 @@ const LOOP_STEPS = [
   { n: "02", label: "Map protocol surface", body: "Register public contract addresses, roles, and authority metadata for the protocol under review." },
   { n: "03", label: "Detect authority risks", body: "Deterministic admin-surface scan identifies EOA owners, missing timelocks, and role-concentration risks." },
   { n: "04", label: "Match threat families", body: "Project findings are mapped to global threat families: Admin Key, Governance, Bridge, Oracle, Treasury, and more." },
-  { n: "05", label: "Recommend controls", body: "Control recommendations are generated from findings and aligned to doctrine coverage and replay outcomes." },
+  { n: "05", label: "Recommend controls", body: "Control recommendations are generated from findings and aligned to doctrine coverage and validation outcomes." },
   { n: "06", label: "Track evidence", body: "Operators record public evidence: multisig addresses, timelock references, governance proposals, and policy notes." },
   { n: "07", label: "Produce defense review", body: "All data is assembled into a structured client-ready report with verification status and next actions." },
 ];

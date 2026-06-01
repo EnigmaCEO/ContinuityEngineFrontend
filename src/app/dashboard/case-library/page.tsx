@@ -8,13 +8,14 @@ import type {
   CaseLibraryRecord,
   ArchiveFacetOption,
   ArchiveFacetsResponse,
+  SourceProviderStatus,
   BatchReplayResult,
   EligibilityRefreshResult,
 } from "@/lib/case-library/types";
-import type { CaseLibraryTableSortKey, CaseSeverity  } from "@/lib/case-library/types";
+import type { CaseLibraryTableSortKey } from "@/lib/case-library/types";
 import {
-  fetchSummaryStats, fetchCases, fetchActivity, fetchMetrics, triggerSync,
-  batchRunReplay, refreshReplayEligibility, fetchArchiveFacets,
+  fetchSummaryStats, fetchCases, fetchActivity, fetchMetrics, fetchProviderStatus,
+  triggerSync, batchRunReplay, refreshReplayEligibility, fetchArchiveFacets,
 } from "@/lib/case-library/service";
 import { CLR } from "@/lib/case-library/utils";
 import { CaseLibraryHeader }       from "@/components/case-library/CaseLibraryHeader";
@@ -22,17 +23,18 @@ import { CaseLibrarySummaryCards } from "@/components/case-library/CaseLibrarySu
 import { CaseLibraryFilters }      from "@/components/case-library/CaseLibraryFilters";
 import type { FilterState }        from "@/components/case-library/CaseLibraryFilters";
 import { CaseLibraryTable }        from "@/components/case-library/CaseLibraryTable";
-import { CaseLibraryMetricsPanel } from "@/components/case-library/CaseLibraryMetricsPanel";
+import { CaseLibraryMetricsPanel, IntelligenceProvidersSection } from "@/components/case-library/CaseLibraryMetricsPanel";
 import { CaseLibraryActivityFeed } from "@/components/case-library/CaseLibraryActivityFeed";
 import { CasePreviewDrawer }       from "@/components/case-library/CasePreviewDrawer";
 import { useSession } from "@/components/layout/SessionContext";
-import { AlertTriangle, RefreshCw, Archive, LayoutDashboard, ChevronLeft, Play, Loader2, Zap } from "lucide-react";
+import { AlertTriangle, RefreshCw, Archive, LayoutDashboard, ChevronLeft, Play, Loader2, Zap, Layers } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 25;
 
 const SORT_OPTIONS: { value: CaseLibraryTableSortKey; label: string }[] = [
+  { value: 'priorityScore', label: 'Review Priority' },
   { value: 'ingestedAt', label: 'Newest Ingested' },
   { value: 'updatedAt',  label: 'Recently Updated' },
   { value: 'severity',   label: 'Severity' },
@@ -44,6 +46,7 @@ const SORT_OPTIONS: { value: CaseLibraryTableSortKey; label: string }[] = [
 const EMPTY_FILTERS: FilterState = {
   search: "", severity: "", type: "", source: "",
   chainSystem: "", replayStatus: "", doctrineStatus: "", status: "",
+  priorityBand: "",
   ingestedFrom: "", ingestedTo: "", datePreset: "",
 };
 
@@ -73,7 +76,7 @@ const STATIC_CASE_STATUSES: ArchiveFacetOption[] = [
   { value: "ingested", label: "Ingested", count: 0 },
   { value: "normalized", label: "Normalized", count: 0 },
   { value: "classified", label: "Classified", count: 0 },
-  { value: "replay_ready", label: "Replay Ready", count: 0 },
+  { value: "replay_ready", label: "Validation Ready", count: 0 },
   { value: "doctrine_tagged", label: "Doctrine Tagged", count: 0 },
   { value: "verified", label: "Verified", count: 0 },
   { value: "needs_review", label: "Needs Review", count: 0 },
@@ -92,6 +95,8 @@ function sourceValue(source: string): string {
     "NVD CVE": "nvd_cve",
     "CISA KEV": "cisa_kev",
     "De.Fi REKT": "defi_rekt",
+    "OSV": "osv",
+    "FIRST EPSS": "epss",
   };
   return known[source] ?? source.toLowerCase().replaceAll(".", "").replaceAll("/", "_").replaceAll("-", "_").replaceAll(" ", "_");
 }
@@ -102,6 +107,8 @@ function sourceLabel(value: string): string {
     nvd_cve: "NVD CVE",
     cisa_kev: "CISA KEV",
     defi_rekt: "De.Fi REKT",
+    osv: "OSV",
+    epss: "FIRST EPSS",
   };
   return known[value] ?? titleLabel(value);
 }
@@ -149,13 +156,14 @@ export default function CaseLibraryPage() {
   const canManageSources = me?.permissions.canManageSources ?? false;
 
   // ── Data state ──────────────────────────────────────────────────────────────
-  const [summary,       setSummary]       = useState<CaseLibrarySummaryStats | null>(null);
-  const [cases,         setCases]         = useState<CaseLibraryRecord[]>([]);
-  const [caseTotal,     setCaseTotal]     = useState(0);
-  const [activity,      setActivity]      = useState<CaseLibraryActivityItem[]>([]);
-  const [metrics,       setMetrics]       = useState<CaseLibraryMetrics | null>(null);
-  const [facets,        setFacets]        = useState<ArchiveFacetsResponse | null>(null);
-  const [selectedCase,  setSelectedCase]  = useState<CaseLibraryRecord | null>(null);
+  const [summary,        setSummary]        = useState<CaseLibrarySummaryStats | null>(null);
+  const [cases,          setCases]          = useState<CaseLibraryRecord[]>([]);
+  const [caseTotal,      setCaseTotal]      = useState(0);
+  const [activity,       setActivity]       = useState<CaseLibraryActivityItem[]>([]);
+  const [metrics,        setMetrics]        = useState<CaseLibraryMetrics | null>(null);
+  const [providerStatus, setProviderStatus] = useState<SourceProviderStatus[]>([]);
+  const [facets,         setFacets]         = useState<ArchiveFacetsResponse | null>(null);
+  const [selectedCase,   setSelectedCase]   = useState<CaseLibraryRecord | null>(null);
 
   // ── Loading / error state ───────────────────────────────────────────────────
   const [summaryLoading,  setSummaryLoading]  = useState(true);
@@ -166,7 +174,7 @@ export default function CaseLibraryPage() {
   const [error,           setError]           = useState<string | null>(null);
   const [syncing,         setSyncing]         = useState(false);
 
-  // ── Batch replay state ──────────────────────────────────────────────────────
+  // ── Batch validation state ──────────────────────────────────────────────────────
   const [batchReplaying,    setBatchReplaying]    = useState(false);
   const [batchReplayResult, setBatchReplayResult] = useState<BatchReplayResult | null>(null);
   const [batchLimit,        setBatchLimit]        = useState<25 | 50 | 100>(50);
@@ -199,10 +207,11 @@ export default function CaseLibraryPage() {
     setActivityLoading(true);
     setMetricsLoading(true);
     setFacetsLoading(true);
-    const [s, a, m, f] = await Promise.allSettled([
+    const [s, a, m, p, f] = await Promise.allSettled([
       fetchSummaryStats(),
       fetchActivity(),
       fetchMetrics(),
+      fetchProviderStatus(),
       fetchArchiveFacets(),
     ]);
 
@@ -214,6 +223,9 @@ export default function CaseLibraryPage() {
 
     if (m.status === "fulfilled") setMetrics(m.value);
     else setError(m.reason?.message ?? "Failed to load metrics data.");
+
+    if (p.status === "fulfilled") setProviderStatus(p.value);
+    // provider-status is best-effort — a failure is non-fatal.
 
     if (f.status === "fulfilled") {
       setFacets(f.value);
@@ -278,7 +290,7 @@ export default function CaseLibraryPage() {
       setBatchReplayResult(result);
       await Promise.all([loadMeta(), loadCases()]);
     } catch (e) {
-      setError((e as Error).message ?? "Batch replay failed.");
+      setError((e as Error).message ?? "Batch validation failed.");
     } finally {
       setBatchReplaying(false);
     }
@@ -312,20 +324,27 @@ export default function CaseLibraryPage() {
   }
 
   // ── View mode ─────────────────────────────────────────────────────────────────
-  const [viewMode, setViewMode] = useState<"overview" | "archive" | "critical">("overview");
+  type ViewMode = "overview" | "archive" | "priority" | "providers" | "validation";
+  const [viewMode, setViewMode] = useState<ViewMode>("overview");
+
+  function handleViewModeChange(mode: ViewMode) {
+    setViewMode(mode);
+    setPage(1);
+    if (mode === "priority") {
+      setSortBy("priorityScore");
+      setSortDir("desc");
+    }
+  }
 
   // ── Derived state ────────────────────────────────────────────────────────────
   const effectiveFilters = useMemo<FilterState>(() => {
-    if (viewMode === "critical") {
-      return { ...filters, severity: "critical" as CaseSeverity };
-    }
     return filters;
   }, [viewMode, filters]);
   
   const hasAnyFilter = (
     !!effectiveFilters.search || !!effectiveFilters.severity || !!effectiveFilters.type ||
     !!effectiveFilters.source || !!effectiveFilters.chainSystem || !!effectiveFilters.replayStatus ||
-    !!effectiveFilters.doctrineStatus || !!effectiveFilters.status ||
+    !!effectiveFilters.doctrineStatus || !!effectiveFilters.status || !!effectiveFilters.priorityBand ||
     !!effectiveFilters.ingestedFrom || !!effectiveFilters.ingestedTo
   );
 
@@ -342,6 +361,7 @@ export default function CaseLibraryPage() {
         replayStatus: effectiveFilters.replayStatus || undefined,
         doctrineStatus: effectiveFilters.doctrineStatus || undefined,
         status: effectiveFilters.status || undefined,
+        priorityBand: effectiveFilters.priorityBand || undefined,
         ingestedFrom: effectiveFilters.ingestedFrom || undefined,
         ingestedTo: effectiveFilters.ingestedTo || undefined,
         page,
@@ -381,6 +401,7 @@ export default function CaseLibraryPage() {
     effectiveFilters.replayStatus,
     effectiveFilters.doctrineStatus,
     effectiveFilters.status,
+    effectiveFilters.priorityBand,
     effectiveFilters.ingestedFrom,
     effectiveFilters.ingestedTo,
     page,
@@ -422,15 +443,22 @@ export default function CaseLibraryPage() {
 
       {/* ── View mode tabs ─────────────────────────────────────────────────── */}
       <div style={{
-        display: "flex", alignItems: "center", gap: 4,
+        display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" as const,
         borderBottom: `1px solid ${CLR.border}`, paddingBottom: 0,
       }}>
-        {(["overview", "archive", "critical"] as const).map((mode) => {
-          const active = viewMode === mode;
+        {[
+          { mode: "overview", label: "Overview", icon: LayoutDashboard },
+          { mode: "archive", label: "Archive", icon: Archive },
+          { mode: "priority", label: "Priority Queue", icon: AlertTriangle },
+          { mode: "providers", label: "Intelligence Providers", icon: Layers },
+          { mode: "validation", label: "Validation", icon: Zap },
+        ].map(({ mode, label, icon: Icon }) => {
+          const typedMode = mode as ViewMode;
+          const active = viewMode === typedMode;
           return (
             <button
               key={mode}
-              onClick={() => setViewMode(mode)}
+              onClick={() => handleViewModeChange(typedMode)}
               style={{
                 display: "flex", alignItems: "center", gap: 6,
                 padding: "8px 16px", cursor: "pointer",
@@ -443,19 +471,7 @@ export default function CaseLibraryPage() {
                 transition: "color 0.15s, border-color 0.15s",
               }}
             >
-              {mode === "overview" ? (
-                <>
-                  <LayoutDashboard size={12} /> Overview
-                </>
-              ) : mode === "archive" ? (
-                <>
-                  <Archive size={12} /> Archive
-                </>
-              ) : (
-                <>
-                  <AlertTriangle size={12} /> Critical Cases
-                </>
-              )}
+              <Icon size={12} /> {label}
             </button>
           );
         })}
@@ -465,12 +481,21 @@ export default function CaseLibraryPage() {
       {viewMode === "overview" && (
         <>
           <CaseLibrarySummaryCards stats={summary} loading={summaryLoading} />
-          <CaseLibraryMetricsPanel metrics={metrics} loading={metricsLoading} />
+          <CaseLibraryMetricsPanel
+            metrics={metrics}
+            loading={metricsLoading}
+            providerStatus={providerStatus}
+            onViewProviders={() => handleViewModeChange("providers")}
+          />
           <CaseLibraryActivityFeed items={activity} loading={activityLoading} />
         </>
       )}
 
       {/* ── Archive ───────────────────────────────────────────────────────── */}
+      {viewMode === "providers" && (
+        <IntelligenceProvidersSection providerStatus={providerStatus} loading={metricsLoading} />
+      )}
+
       {viewMode === "archive" && (
         <section
           id="global-case-archive"
@@ -507,20 +532,20 @@ export default function CaseLibraryPage() {
                 </span>
               </div>
               <p style={{ fontSize: 10.5, color: "rgba(148,163,184,0.75)", margin: 0, lineHeight: "1.5" }}>
-                Browse normalized cases by date, source, severity, CVE, replay state, and doctrine status.
+                Browse normalized cases by date, source, severity, CVE, validation state, and doctrine status.
               </p>
             </div>
 
-            {/* Sort + replay + back controls */}
+            {/* Sort + validation + back controls */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, flexWrap: "wrap" as const }}>
               {canManageSources && (
                 <>
-              {/* Refresh Replay Eligibility */}
+              {/* Refresh Validation Eligibility */}
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <button
                   onClick={handleRefreshEligibility}
                   disabled={eligRefreshing || batchReplaying}
-                  title="Re-run doctrine enrichment on linked cases with replay_eligibility=false"
+                  title="Re-run doctrine enrichment on linked cases missing validation eligibility"
                   style={{
                     display: "flex", alignItems: "center", gap: 5,
                     background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.3)",
@@ -547,7 +572,7 @@ export default function CaseLibraryPage() {
 
               <div style={{ width: 1, height: 18, background: CLR.border }} />
 
-              {/* Compact Batch Replay */}
+              {/* Compact Batch Validation */}
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <select
                   value={batchLimit}
@@ -566,7 +591,7 @@ export default function CaseLibraryPage() {
                 <button
                   onClick={handleBatchReplay}
                   disabled={batchReplaying}
-                  title="Run batch replay for eligible cases"
+                  title="Run batch validation for eligible cases"
                   style={{
                     display: "flex", alignItems: "center", gap: 5,
                     background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)",
@@ -578,7 +603,7 @@ export default function CaseLibraryPage() {
                   {batchReplaying
                     ? <Loader2 size={10} style={{ animation: "spin 1s linear infinite" }} />
                     : <Play size={10} />}
-                  {batchReplaying ? "Running…" : "Batch Replay"}
+                  {batchReplaying ? "Running…" : "Batch Validate"}
                 </button>
                 {batchReplayResult && !batchReplaying && (
                   <span style={{ fontSize: 9.5, color: "#10B981" }}>
@@ -618,7 +643,7 @@ export default function CaseLibraryPage() {
                 {sortDir === "desc" ? "↓" : "↑"}
               </button>
               <button
-                onClick={() => setViewMode("overview")}
+                onClick={() => handleViewModeChange("overview")}
                 style={{
                   display: "flex", alignItems: "center", gap: 5,
                   background: "rgba(255,255,255,0.04)", border: `1px solid ${CLR.border}`,
@@ -670,7 +695,7 @@ export default function CaseLibraryPage() {
       )}
 
       {/* ── Critical ───────────────────────────────────────────────────────── */}
-      {viewMode === "critical" && (
+      {viewMode === "priority" && (
         <section
           id="global-case-archive"
           style={{
@@ -679,7 +704,7 @@ export default function CaseLibraryPage() {
             display: "flex", flexDirection: "column",
           }}
         >
-          {/* Critical header */}
+          {/* Priority header */}
           <div style={{
             padding: "16px 20px 14px",
             borderBottom: `1px solid rgba(212,175,55,0.22)`,
@@ -689,12 +714,12 @@ export default function CaseLibraryPage() {
           }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                <Archive size={15} style={{ color: CLR.gold }} />
+                <AlertTriangle size={15} style={{ color: CLR.gold }} />
                 <span style={{
                   fontSize: 12, fontWeight: 700, letterSpacing: "0.12em",
                   color: CLR.gold, textTransform: "uppercase" as const,
                 }}>
-                  Critical Cases
+                  Priority Queue
                 </span>
                 <span style={{
                   fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
@@ -706,7 +731,7 @@ export default function CaseLibraryPage() {
                 </span>
               </div>
               <p style={{ fontSize: 10.5, color: "rgba(148,163,184,0.75)", margin: 0, lineHeight: "1.5" }}>
-              Highest-severity vulnerabilities and incidents prioritized for case-indexed coverage, doctrine coverage, and operator review.
+              Cases sorted for operator review by priority score, severity, validation coverage, and doctrine coverage.
               </p>
             </div>
 
@@ -730,7 +755,142 @@ export default function CaseLibraryPage() {
         </section>
       )}
 
-      {/* Case preview drawer — available in both modes */}
+      {/* Validation */}
+      {viewMode === "validation" && (
+        <section
+          id="case-library-validation"
+          style={{
+            background: CLR.surface, border: `1px solid rgba(212,175,55,0.28)`,
+            borderRadius: 8, overflow: "visible",
+            display: "flex", flexDirection: "column",
+          }}
+        >
+          <div style={{
+            padding: "16px 20px 14px",
+            borderBottom: `1px solid rgba(212,175,55,0.22)`,
+            background: "rgba(212,175,55,0.03)",
+            display: "flex", alignItems: "flex-start",
+            justifyContent: "space-between", gap: 12,
+          }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                <Zap size={15} style={{ color: CLR.gold }} />
+                <span style={{
+                  fontSize: 12, fontWeight: 700, letterSpacing: "0.12em",
+                  color: CLR.gold, textTransform: "uppercase" as const,
+                }}>
+                  Validation
+                </span>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
+                  color: CLR.gold, background: "rgba(212,175,55,0.12)",
+                  border: "1px solid rgba(212,175,55,0.3)", borderRadius: 4,
+                  padding: "2px 7px", textTransform: "uppercase" as const,
+                }}>
+                  {tableLoading ? "..." : `${caseTotal.toLocaleString()} records`}
+                </span>
+              </div>
+              <p style={{ fontSize: 10.5, color: "rgba(148,163,184,0.75)", margin: 0, lineHeight: "1.5" }}>
+                Refresh validation eligibility and run batch validation for eligible cases.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, flexWrap: "wrap" as const }}>
+              {canManageSources ? (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <button
+                      onClick={handleRefreshEligibility}
+                      disabled={eligRefreshing || batchReplaying}
+                      title="Re-run doctrine enrichment on linked cases missing validation eligibility"
+                      style={{
+                        display: "flex", alignItems: "center", gap: 5,
+                        background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.3)",
+                        borderRadius: 5, padding: "4px 10px",
+                        cursor: eligRefreshing || batchReplaying ? "not-allowed" : "pointer",
+                        fontSize: 10, color: "#8B5CF6", height: 27, fontWeight: 600,
+                        opacity: eligRefreshing ? 0.7 : 1,
+                      }}
+                    >
+                      {eligRefreshing
+                        ? <Loader2 size={10} style={{ animation: "spin 1s linear infinite" }} />
+                        : <Zap size={10} />}
+                      {eligRefreshing ? "Refreshing..." : "Refresh Eligibility"}
+                    </button>
+                    {eligResult && !eligRefreshing && (
+                      <span style={{ fontSize: 9.5, color: "#8B5CF6" }}>
+                        OK {eligResult.updated} updated
+                      </span>
+                    )}
+                    {eligError && !eligRefreshing && (
+                      <span style={{ fontSize: 9.5, color: CLR.red }}>{eligError}</span>
+                    )}
+                  </div>
+
+                  <div style={{ width: 1, height: 18, background: CLR.border }} />
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <select
+                      value={batchLimit}
+                      onChange={(e) => setBatchLimit(Number(e.target.value) as 25 | 50 | 100)}
+                      disabled={batchReplaying}
+                      style={{
+                        background: "rgba(10,12,18,0.9)", border: `1px solid rgba(16,185,129,0.25)`,
+                        borderRadius: 5, padding: "3px 6px", fontSize: 10,
+                        color: "#10B981", cursor: "pointer", outline: "none", height: 27,
+                      }}
+                    >
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                    <button
+                      onClick={handleBatchReplay}
+                      disabled={batchReplaying}
+                      title="Run batch validation for eligible cases"
+                      style={{
+                        display: "flex", alignItems: "center", gap: 5,
+                        background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)",
+                        borderRadius: 5, padding: "4px 10px", cursor: batchReplaying ? "not-allowed" : "pointer",
+                        fontSize: 10, color: "#10B981", height: 27, fontWeight: 600,
+                        opacity: batchReplaying ? 0.7 : 1,
+                      }}
+                    >
+                      {batchReplaying
+                        ? <Loader2 size={10} style={{ animation: "spin 1s linear infinite" }} />
+                        : <Play size={10} />}
+                      {batchReplaying ? "Running..." : "Batch Validate"}
+                    </button>
+                    {batchReplayResult && !batchReplaying && (
+                      <span style={{ fontSize: 9.5, color: "#10B981" }}>
+                        OK {batchReplayResult.replayed}
+                      </span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <span style={{ fontSize: 10.5, color: CLR.muted }}>Validation operations require source management permission.</span>
+              )}
+            </div>
+          </div>
+
+          <CaseLibraryTable
+            cases={cases}
+            total={caseTotal}
+            page={page}
+            pageSize={PAGE_SIZE}
+            sortBy={sortBy}
+            sortDir={sortDir}
+            loading={tableLoading}
+            hasAnyFilter={hasAnyFilter}
+            onSort={handleSort}
+            onPageChange={setPage}
+            onRowClick={handleRowClick}
+          />
+        </section>
+      )}
+
+      {/* Case preview drawer */}
       {selectedCase && (
         <CasePreviewDrawer
           key={`${selectedCase.caseId}:${selectedCase.updatedAt}`}

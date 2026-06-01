@@ -21,6 +21,7 @@ import {
   Building2,
   LogOut,
   ClipboardList,
+  Bug,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,6 +39,7 @@ const navSections: NavSection[] = [
       { href: "/dashboard/case-library", icon: FolderOpen, label: "Case Library" },
       { href: "/dashboard/doctrine", icon: BookOpen, label: "Doctrine Engine" },
       { href: "/dashboard/threat-matrix", icon: Network, label: "Threat Matrix" },
+      { href: "/dashboard/cve-intelligence", icon: Bug, label: "CVE Intelligence" },
       { href: "/dashboard/incidents", icon: AlertTriangle, label: "Incidents" },
     ],
   },

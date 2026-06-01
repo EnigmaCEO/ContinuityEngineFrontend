@@ -1699,7 +1699,7 @@ function ThreatsTab({ relevance, findings }: { relevance: ProjectRelevance | nul
               <MiniStat label="Matched" value={String(family.matchedFindings.length)} />
               <MiniStat label="Cases" value={String(family.globalCaseCount)} />
               <MiniStat label="Critical" value={String(family.criticalCount)} />
-              <MiniStat label="Replay" value={`${Math.round(family.replayCoveragePct)}%`} />
+              <MiniStat label="Validation" value={`${Math.round(family.replayCoveragePct)}%`} />
             </div>
             <div style={{ marginTop: 10, display: "flex", gap: 5, flexWrap: "wrap" }}>
               {family.topDoctrineTags.slice(0, 3).map((tag) => <Pill key={tag} label={formatTag(tag)} color="#F5E7A1" />)}

@@ -52,7 +52,7 @@ export function statusColor(s: CaseStatus): string {
 
 export function statusLabel(s: CaseStatus): string {
   switch (s) {
-    case 'replay_ready':   return 'Replay Ready';
+    case 'replay_ready':   return 'Validation Ready';
     case 'doctrine_tagged':return 'Doctrine Tagged';
     case 'needs_review':   return 'Needs Review';
     default:               return s.charAt(0).toUpperCase() + s.slice(1);

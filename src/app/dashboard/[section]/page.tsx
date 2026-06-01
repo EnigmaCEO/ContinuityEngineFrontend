@@ -51,7 +51,7 @@ const sections: Record<
   },
   "case-library": {
     title: "Case Library",
-    description: "Historical case archive with replay capabilities and doctrine outcome analysis.",
+    description: "Historical case archive with validation capabilities and doctrine outcome analysis.",
     icon: FolderOpen,
     color: "#22C55E",
     status: "In Development",

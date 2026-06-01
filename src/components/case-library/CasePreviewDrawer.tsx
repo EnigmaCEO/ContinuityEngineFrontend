@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { X, ExternalLink, Play, BookOpen, Loader2, AlertTriangle } from 'lucide-react';
+import { X, ExternalLink, Play, BookOpen, Loader2, AlertTriangle, Network, Package, Gauge } from 'lucide-react';
 import type { CaseLibraryRecord } from '@/lib/case-library/types';
 import { CLR, formatTs } from '@/lib/case-library/utils';
 import { enrichDoctrine, runReplay } from '@/lib/case-library/service';
@@ -17,6 +17,17 @@ interface Props {
 }
 
 const DRAWER_WIDTH = 500;
+
+function validationVocabulary(text: string): string {
+  return text
+    .replaceAll('replayed', 'validated')
+    .replaceAll('Replayable', 'Ready for Validation')
+    .replaceAll('replayable', 'ready for validation')
+    .replaceAll('replaying', 'validating')
+    .replaceAll('Replay', 'Validation')
+    .replaceAll('replay', 'validation')
+    .replaceAll('REPLAY', 'VALIDATION');
+}
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
@@ -66,7 +77,7 @@ function FooterButton({
   );
 }
 
-// ── Inline Replay Panel ───────────────────────────────────────────────────────
+// ── Inline Validation Panel ───────────────────────────────────────────────────────
 // Always visible — shows action button + eligibility reason + result output.
 
 function ReplayPanel({
@@ -90,7 +101,7 @@ function ReplayPanel({
         ? 'Doctrine tags missing — re-run doctrine enrichment'
         : !hasRecommendedActs
           ? 'Recommended actions missing — re-run doctrine enrichment'
-          : 'Replay not eligible for this case type';
+          : 'Validation not eligible for this case type';
 
   return (
     <div style={{
@@ -111,7 +122,7 @@ function ReplayPanel({
             fontSize: 9.5, color: '#10B981', fontWeight: 700,
             letterSpacing: '0.12em', textTransform: 'uppercase' as const,
           }}>
-            Case Replay
+            Case Validation
           </span>
           <ReplayBadge status={c.replayStatus} />
         </div>
@@ -135,7 +146,7 @@ function ReplayPanel({
           {replaying
             ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} />
             : <Play size={11} />}
-          {replaying ? 'Running…' : c.replayStatus === 'passed' ? 'Re-run Replay' : 'Run Replay'}
+          {replaying ? 'Running…' : c.replayStatus === 'passed' ? 'Re-run Validation' : 'Run Validation'}
         </button>
       </div>
 
@@ -153,7 +164,7 @@ function ReplayPanel({
         </div>
       )}
 
-      {/* Replay result output */}
+      {/* Validation result output */}
       {hasResult && (
         <div style={{ padding: '10px 12px' }}>
           {c.replayScenario && (
@@ -164,7 +175,7 @@ function ReplayPanel({
                 padding: '1px 6px', borderRadius: 3,
                 background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)',
               }}>
-                {c.replayScenario}
+                {validationVocabulary(c.replayScenario)}
               </span>
             </div>
           )}
@@ -173,7 +184,7 @@ function ReplayPanel({
             <div style={{
               fontSize: 10.5, color: 'rgba(226,232,240,0.75)', lineHeight: '1.55', marginBottom: 8,
             }}>
-              {c.replaySummary}
+              {validationVocabulary(c.replaySummary)}
             </div>
           )}
 
@@ -301,7 +312,7 @@ function EnrichmentSection({ c }: { c: CaseLibraryRecord }) {
         <div style={{ marginTop: 8, fontSize: 9.5, color: CLR.muted }}>
           Confidence: <span style={{ color: CLR.text }}>{Math.round(c.enrichmentConfidence * 100)}%</span>
           {c.replayEligibility && (
-            <span style={{ marginLeft: 10, color: '#10B981' }}>Replay eligible</span>
+            <span style={{ marginLeft: 10, color: '#10B981' }}>Validation eligible</span>
           )}
         </div>
       )}
@@ -309,7 +320,231 @@ function EnrichmentSection({ c }: { c: CaseLibraryRecord }) {
   );
 }
 
+// ── Package Intelligence Section ─────────────────────────────────────────────
+
+function priorityColor(band: CaseLibraryRecord['priorityBand']): string {
+  switch (band) {
+    case 'critical': return '#EF4444';
+    case 'high': return '#F97316';
+    case 'medium': return '#F59E0B';
+    default: return '#64748B';
+  }
+}
+
+function PrioritySection({ c }: { c: CaseLibraryRecord }) {
+  const band = c.priorityBand ?? 'low';
+  const score = Math.round(c.priorityScore ?? 0);
+  const color = priorityColor(band);
+  return (
+    <div style={{
+      marginTop: 14, padding: '10px 12px',
+      background: `${color}08`,
+      border: `1px solid ${color}28`,
+      borderRadius: 6,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+        <div style={{ fontSize: 9.5, color, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
+          Review Priority
+        </div>
+        <span style={{
+          fontSize: 9, fontWeight: 800, color,
+          background: `${color}14`, border: `1px solid ${color}35`,
+          borderRadius: 4, padding: '2px 7px', textTransform: 'uppercase' as const,
+        }}>
+          {band}
+        </span>
+      </div>
+
+      <div style={{ marginBottom: 8 }}>
+        <Row label="Priority badge">
+          <span style={{
+            display: 'inline-flex', fontSize: 9, fontWeight: 800, color,
+            background: `${color}14`, border: `1px solid ${color}35`,
+            borderRadius: 4, padding: '2px 7px', textTransform: 'uppercase' as const,
+          }}>
+            {band}
+          </span>
+        </Row>
+        <Row label="Priority score">{score}</Row>
+      </div>
+
+      {c.priorityReasons && c.priorityReasons.length > 0 ? (
+        <ul style={{ margin: 0, paddingLeft: 15, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {c.priorityReasons.map((reason, i) => (
+            <li key={i} style={{ fontSize: 10.5, color: 'rgba(226,232,240,0.76)', lineHeight: '1.45' }}>
+              {reason}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div style={{ fontSize: 10.5, color: CLR.muted }}>
+          No review-priority reasons available.
+        </div>
+      )}
+
+      <div style={{ marginTop: 8, fontSize: 9.5, color: CLR.muted, lineHeight: '1.45' }}>
+        Review priority does not confirm exposure.
+      </div>
+    </div>
+  );
+}
+
+function PackageIntelligenceSection({ c }: { c: CaseLibraryRecord }) {
+  const hasPackages = c.affectedPackages && c.affectedPackages.length > 0;
+  const hasAliases  = c.aliases && c.aliases.length > 0;
+  const hasCve      = c.cveCount > 0 || !!(c.cveRefs && c.cveRefs.length > 0);
+
+  if (!hasPackages && !hasAliases && !hasCve) return null;
+
+  return (
+    <div style={{
+      marginTop: 14, padding: '10px 12px',
+      background: 'rgba(99,102,241,0.04)',
+      border: '1px solid rgba(99,102,241,0.18)',
+      borderRadius: 6,
+    }}>
+      <div style={{ fontSize: 9.5, color: '#818CF8', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 8 }}>
+        Package Intelligence
+      </div>
+
+      {hasAliases && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 9, color: CLR.muted, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase' as const, marginBottom: 4 }}>Aliases</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
+            {c.aliases!.map((a) => (
+              <span key={a} style={{
+                fontSize: 9, padding: '2px 7px', borderRadius: 4,
+                background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)',
+                color: '#A5B4FC', fontFamily: 'var(--font-geist-mono,monospace)',
+              }}>
+                {a}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {hasPackages ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {c.affectedPackages!.map((pkg, i) => (
+            <div key={i} style={{
+              padding: '7px 9px', borderRadius: 5,
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(99,102,241,0.15)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <span style={{ fontSize: 10.5, fontWeight: 600, color: CLR.text, fontFamily: 'var(--font-geist-mono,monospace)' }}>
+                  {pkg.package_name}
+                </span>
+                {pkg.ecosystem && (
+                  <span style={{
+                    fontSize: 8.5, padding: '1px 6px', borderRadius: 3,
+                    background: 'rgba(99,102,241,0.12)', color: '#818CF8',
+                    border: '1px solid rgba(99,102,241,0.2)',
+                  }}>
+                    {pkg.ecosystem}
+                  </span>
+                )}
+              </div>
+
+              {pkg.version_ranges && pkg.version_ranges.length > 0 && (
+                <div style={{ marginBottom: 3 }}>
+                  <span style={{ fontSize: 8.5, color: CLR.muted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>Affected: </span>
+                  <span style={{ fontSize: 9.5, fontFamily: 'var(--font-geist-mono,monospace)', color: '#FBBF24' }}>
+                    {pkg.version_ranges.join(', ')}
+                  </span>
+                </div>
+              )}
+
+              {pkg.fixed_versions && pkg.fixed_versions.length > 0 && (
+                <div style={{ marginBottom: 3 }}>
+                  <span style={{ fontSize: 8.5, color: CLR.muted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>Fixed: </span>
+                  <span style={{ fontSize: 9.5, fontFamily: 'var(--font-geist-mono,monospace)', color: '#10B981' }}>
+                    {pkg.fixed_versions.join(', ')}
+                  </span>
+                </div>
+              )}
+
+              {pkg.warnings && pkg.warnings.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginTop: 4 }}>
+                  {pkg.warnings.map((w) => (
+                    <span key={w} style={{
+                      fontSize: 8.5, padding: '1px 6px', borderRadius: 3,
+                      background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)',
+                      color: '#FCD34D', display: 'flex', alignItems: 'center', gap: 3,
+                    }}>
+                      <AlertTriangle size={9} />
+                      {w.replace(/_/g, ' ')}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : hasCve ? (
+        <div style={{ fontSize: 10, color: CLR.muted, fontStyle: 'italic' as const }}>
+          No package-level intelligence available yet.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 // ── Main Drawer ───────────────────────────────────────────────────────────────
+
+function epssBandLabel(band?: CaseLibraryRecord['epssPressureBand'] | null): string {
+  switch (band) {
+    case 'very_high_pressure': return 'Very high pressure';
+    case 'high_pressure': return 'High pressure';
+    case 'elevated_pressure': return 'Elevated pressure';
+    case 'baseline_pressure': return 'Baseline pressure';
+    default: return 'Unbanded';
+  }
+}
+
+function ExploitPressureSection({ c }: { c: CaseLibraryRecord }) {
+  if (c.epssScore == null && c.epssPercentile == null) return null;
+  const epssPriorityReason = (c.priorityReasons ?? []).find((reason) => reason.includes('EPSS'));
+
+  return (
+    <div style={{
+      marginTop: 14, padding: '10px 12px',
+      background: 'rgba(249,115,22,0.04)',
+      border: '1px solid rgba(249,115,22,0.2)',
+      borderRadius: 6,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+        <Gauge size={12} style={{ color: '#F97316' }} />
+        <div style={{ fontSize: 9.5, color: '#F97316', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
+          Exploit Pressure
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+        <Row label="EPSS score">{c.epssScore != null ? c.epssScore.toFixed(3) : 'n/a'}</Row>
+        <Row label="Percentile">{c.epssPercentile != null ? c.epssPercentile.toFixed(3) : 'n/a'}</Row>
+        <Row label="EPSS date">{c.epssDate ?? 'n/a'}</Row>
+        <Row label="Pressure band">{epssBandLabel(c.epssPressureBand)}</Row>
+      </div>
+
+      <div style={{
+        marginTop: 8, padding: '7px 9px', borderRadius: 5,
+        background: 'rgba(249,115,22,0.08)',
+        border: '1px solid rgba(249,115,22,0.2)',
+        fontSize: 10, color: '#FDBA74', lineHeight: '1.45',
+      }}>
+        Exploit likelihood signal, not confirmed exposure.
+      </div>
+
+      {epssPriorityReason && (
+        <div style={{ marginTop: 7, fontSize: 10, color: '#FDBA74', lineHeight: '1.45' }}>
+          Priority reason: {epssPriorityReason}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function CasePreviewDrawer({ record: initialRecord, onClose, onRefresh }: Props) {
   const [c, setC] = useState<CaseLibraryRecord>(initialRecord);
@@ -346,13 +581,17 @@ export function CasePreviewDrawer({ record: initialRecord, onClose, onRefresh }:
       setC(replayed);
       onRefresh?.();
     } catch (e) {
-      setReplayError((e as Error).message ?? 'Replay failed');
+      setReplayError((e as Error).message ?? 'Validation failed');
     } finally {
       setReplaying(false);
     }
   }
 
-  const alreadyEnriched = c.doctrineStatus === 'linked' || c.doctrineStatus === 'updated';
+  const alreadyEnriched    = c.doctrineStatus === 'linked' || c.doctrineStatus === 'updated';
+  const hasCveRefs         = c.cveCount > 0 || !!(c.cveRefs && c.cveRefs.length > 0);
+  const hasAffectedPkgs    = !!(c.affectedPackages && c.affectedPackages.length > 0);
+  const cveIntelUrl        = `/dashboard/cve-intelligence?caseId=${encodeURIComponent(c.caseId)}`;
+  const blastRadiusUrl     = `/dashboard/blast-radius?caseId=${encodeURIComponent(c.caseId)}`;
 
   return (
     <>
@@ -536,7 +775,7 @@ export function CasePreviewDrawer({ record: initialRecord, onClose, onRefresh }:
             {c.outcome && <Row label="Outcome">{c.outcome}</Row>}
           </div>
 
-          {/* ── Inline Replay Panel (always visible) ─────────────────────── */}
+          {/* ── Inline Validation Panel (always visible) ─────────────────────── */}
           <ReplayPanel
             c={c}
             replaying={replaying}
@@ -545,7 +784,14 @@ export function CasePreviewDrawer({ record: initialRecord, onClose, onRefresh }:
           />
 
           {/* ── Doctrine Enrichment Section ───────────────────────────────── */}
+          <PrioritySection c={c} />
+
           <EnrichmentSection c={c} />
+
+          {/* ── Package Intelligence Section ──────────────────────────────── */}
+          <PackageIntelligenceSection c={c} />
+
+          <ExploitPressureSection c={c} />
 
           {/* Doctrine enrichment error */}
           {enrichError && (
@@ -572,6 +818,50 @@ export function CasePreviewDrawer({ record: initialRecord, onClose, onRefresh }:
             onClick={handleEnrichDoctrine}
             loading={enriching}
           />
+          {hasCveRefs ? (
+            <a
+              href={cveIntelUrl}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'rgba(239,68,68,0.1)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                borderRadius: 6, padding: '7px 14px',
+                fontSize: 11, color: '#FCA5A5',
+                fontWeight: 500, textDecoration: 'none',
+              }}
+            >
+              <Network size={12} />
+              CVE Intelligence Map
+            </a>
+          ) : (
+            <FooterButton
+              icon={<Network size={12} />}
+              label="CVE Intelligence Map"
+              disabled
+            />
+          )}
+          {hasAffectedPkgs ? (
+            <a
+              href={blastRadiusUrl}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'rgba(99,102,241,0.1)',
+                border: '1px solid rgba(99,102,241,0.3)',
+                borderRadius: 6, padding: '7px 14px',
+                fontSize: 11, color: '#A5B4FC',
+                fontWeight: 500, textDecoration: 'none',
+              }}
+            >
+              <Package size={12} />
+              Open Blast Radius Resolver
+            </a>
+          ) : (
+            <FooterButton
+              icon={<Package size={12} />}
+              label="Blast Radius Resolver"
+              disabled
+            />
+          )}
         </div>
       </div>
     </>

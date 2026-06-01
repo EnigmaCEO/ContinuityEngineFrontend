@@ -30,8 +30,9 @@ const COL_HEADERS: { key: CaseLibraryTableSortKey; label: string; width: number 
   { key: 'source',         label: 'Source',    width: 90  },
   { key: 'type',           label: 'Type',      width: 118 },
   { key: 'severity',       label: 'Sev.',      width: 68  },
+  { key: 'priorityScore',  label: 'Priority',  width: 86  },
   { key: 'cveCount',       label: 'CVE / GHSA',width: 120 },
-  { key: 'replayStatus',   label: 'Replay',    width: 82  },
+  { key: 'replayStatus',   label: 'Validation',    width: 82  },
   { key: 'doctrineStatus', label: 'Doctrine',  width: 78  },
   { key: 'status',         label: 'Status',    width: 108 },
   { key: 'ingestedAt',     label: 'Ingested',  width: 96  },
@@ -57,7 +58,7 @@ function SkeletonRow({ idx }: { idx: number }) {
   );
 }
 
-function CveCell({ refs, count }: { refs?: string[]; count: number }) {
+function CveCell({ refs }: { refs?: string[] }) {
   if (!refs || refs.length === 0) {
     return <span style={{ color: 'rgba(140,140,170,0.4)', fontSize: 10.5 }}>—</span>;
   }
@@ -83,6 +84,72 @@ function CveCell({ refs, count }: { refs?: string[]; count: number }) {
         </span>
       )}
     </div>
+  );
+}
+
+function pressureLabel(c: CaseLibraryRecord): string {
+  switch (c.epssPressureBand) {
+    case 'very_high_pressure': return 'EPSS very high';
+    case 'high_pressure': return 'EPSS high';
+    case 'elevated_pressure': return 'EPSS elevated';
+    case 'baseline_pressure': return 'EPSS baseline';
+    default: return 'EPSS';
+  }
+}
+
+function pressureColor(c: CaseLibraryRecord): string {
+  switch (c.epssPressureBand) {
+    case 'very_high_pressure': return '#EF4444';
+    case 'high_pressure': return '#F97316';
+    case 'elevated_pressure': return '#F59E0B';
+    default: return '#64748B';
+  }
+}
+
+function PressureBadge({ c }: { c: CaseLibraryRecord }) {
+  if (c.epssScore == null && c.epssPercentile == null) return null;
+  const color = pressureColor(c);
+  return (
+    <span
+      title={c.exploitPressureLabel ?? 'Exploit likelihood signal, not confirmed exposure.'}
+      style={{
+        display: 'inline-flex', alignSelf: 'flex-start',
+        fontSize: 8, padding: '1px 5px', borderRadius: 3,
+        background: `${color}16`, border: `1px solid ${color}35`,
+        color, fontWeight: 700, whiteSpace: 'nowrap' as const,
+      }}
+    >
+      {pressureLabel(c)}
+    </span>
+  );
+}
+
+function priorityColor(band: CaseLibraryRecord['priorityBand']): string {
+  switch (band) {
+    case 'critical': return '#EF4444';
+    case 'high': return '#F97316';
+    case 'medium': return '#F59E0B';
+    default: return '#64748B';
+  }
+}
+
+function PriorityBadge({ c }: { c: CaseLibraryRecord }) {
+  const band = c.priorityBand ?? 'low';
+  const color = priorityColor(band);
+  const score = Math.round(c.priorityScore ?? 0);
+  return (
+    <span
+      title={(c.priorityReasons ?? []).join(' | ') || 'Review urgency; not confirmed exposure.'}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        minWidth: 56, fontSize: 8.5, padding: '2px 6px', borderRadius: 4,
+        background: `${color}14`, border: `1px solid ${color}38`,
+        color, fontWeight: 800, whiteSpace: 'nowrap' as const,
+        letterSpacing: '0.03em', textTransform: 'uppercase' as const,
+      }}
+    >
+      {band} {score}
+    </span>
   );
 }
 
@@ -249,11 +316,18 @@ export function CaseLibraryTable({
                     <td style={{ padding: '7px 10px' }}>
                       <SeverityBadge severity={c.severity} />
                     </td>
+                    {/* Priority */}
+                    <td style={{ padding: '7px 10px' }}>
+                      <PriorityBadge c={c} />
+                    </td>
                     {/* CVE / GHSA */}
                     <td style={{ padding: '7px 10px' }}>
-                      <CveCell refs={c.cveRefs} count={c.cveCount} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                        <CveCell refs={c.cveRefs} />
+                        <PressureBadge c={c} />
+                      </div>
                     </td>
-                    {/* Replay */}
+                    {/* Validation */}
                     <td style={{ padding: '7px 10px' }}>
                       <ReplayBadge status={c.replayStatus} />
                     </td>

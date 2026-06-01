@@ -1,6 +1,7 @@
 // ─── Core enumerations ────────────────────────────────────────────────────────
 
 export type CaseSeverity = 'critical' | 'high' | 'medium' | 'low';
+export type CasePriorityBand = 'critical' | 'high' | 'medium' | 'low';
 
 export type CaseStatus =
   | 'ingested'
@@ -44,6 +45,30 @@ export interface CaseSourceReference {
   observedAt?:   string;
 }
 
+export type EpssPressureBand =
+  | 'very_high_pressure'
+  | 'high_pressure'
+  | 'elevated_pressure'
+  | 'baseline_pressure';
+
+export interface CaseEnrichment {
+  provider: string;
+  kind: string;
+  confidence: string;
+  evidence: string[];
+  payload: Record<string, unknown>;
+}
+
+// ─── Package intelligence (OSV / advisory enrichment) ────────────────────────
+
+export interface AffectedPackage {
+  package_name:   string;
+  ecosystem:      string;
+  version_ranges?: string[];
+  fixed_versions?: string[];
+  warnings?:       string[];
+}
+
 // ─── Core records ────────────────────────────────────────────────────────────
 
 export interface CaseLibraryRecord {
@@ -66,9 +91,24 @@ export interface CaseLibraryRecord {
   tags?:          string[];
   confidence?:    number;
   outcome?:       string;
+  priorityScore?:   number;
+  priorityBand?:    CasePriorityBand;
+  priorityReasons?: string[];
   // Multi-source attribution
   sources?:      string[];
   sourceRefs?:   CaseSourceReference[];
+  // OSV / package intelligence enrichment
+  aliases?:          string[];
+  affectedPackages?: AffectedPackage[];
+  caseEnrichments?:  CaseEnrichment[];
+  // FIRST EPSS exploit-pressure enrichment. This is likelihood only, not exposure.
+  epssScore?:        number | null;
+  epssPercentile?:   number | null;
+  epssDate?:         string | null;
+  epssSource?:       'FIRST EPSS' | null;
+  epssUpdatedAt?:    string | null;
+  epssPressureBand?: EpssPressureBand | null;
+  exploitPressureLabel?: string | null;
   // Doctrine enrichment (populated after enrich-doctrine)
   doctrineTags?:           string[];
   continuityImplications?: string[];
@@ -155,8 +195,14 @@ export interface SeverityStat {
   count:    number;
 }
 
+export interface PriorityStat {
+  priorityBand: CasePriorityBand;
+  count:        number;
+}
+
 export interface CaseLibraryMetrics {
   sourceBreakdown: SourceStat[];
+  priorityDistribution: PriorityStat[];
   severityDistribution: SeverityStat[];
   replayStats: {
     available:   number;
@@ -181,6 +227,24 @@ export interface CaseLibraryMetrics {
     avgProcessTimeSec: number;
     lastSyncAt:        string;
   };
+}
+
+// ─── Provider status ─────────────────────────────────────────────────────────
+
+export interface SourceProviderStatus {
+  source:             string;
+  sourceKey:          string;
+  sourceType:         string;
+  registered:         boolean;
+  enabled:            boolean;
+  lastRun?:           string;
+  contributedRecords: number;
+  lastError?:         string;
+  lastWarning?:       string;
+  lastActivityLine?:  string;
+  tags:               string[];
+  roles:              string[];
+  description:        string;
 }
 
 // ─── Sync result ──────────────────────────────────────────────────────────────
@@ -217,7 +281,7 @@ export type CaseLibraryTableSortKey = keyof Pick<
   CaseLibraryRecord,
   'caseId' | 'title' | 'type' | 'source' | 'chainSystem' |
   'severity' | 'status' | 'replayStatus' | 'doctrineStatus' |
-  'cveCount' | 'ingestedAt' | 'updatedAt'
+  'cveCount' | 'priorityScore' | 'priorityBand' | 'ingestedAt' | 'updatedAt'
 >;
 
 export interface CaseLibraryTableParams {
@@ -229,6 +293,7 @@ export interface CaseLibraryTableParams {
   replayStatus?:   ReplayStatus | '';
   doctrineStatus?: DoctrineStatus | '';
   status?:         CaseStatus | '';
+  priorityBand?:   CasePriorityBand | '';
   ingestedFrom?:   string;  // YYYY-MM-DD
   ingestedTo?:     string;  // YYYY-MM-DD
   updatedFrom?:    string;  // YYYY-MM-DD

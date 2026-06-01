@@ -112,8 +112,8 @@ export const MOCK_CASES: CaseLibraryRecord[] = [
     tags: ['MEV', 'sandwich', 'uniswap'], confidence: 85,
   },
   {
-    caseId: 'CASE-2026-0401-013', title: 'Optimism Bridge Replay Failure',
-    summary: 'Message replaying from L1→L2 failed silently under high gas conditions; assets locked for 7 days.',
+    caseId: 'CASE-2026-0401-013', title: 'Optimism Bridge Validation Failure',
+    summary: 'Message validation from L1→L2 failed silently under high gas conditions; assets locked for 7 days.',
     type: 'Bridge Exploit', source: 'Manual', chainSystem: 'Optimism',
     severity: 'high', status: 'needs_review', replayStatus: 'failed', doctrineStatus: 'pending',
     cveCount: 1, cveRefs: ['CVE-2026-9500'],
@@ -279,7 +279,7 @@ export const MOCK_SUMMARY_STATS: CaseLibrarySummaryStats = {
 export const MOCK_ACTIVITY: CaseLibraryActivityItem[] = [
   { id: 'a1',  timestamp: '2026-04-25T09:41:00Z', category: 'ingest',     severity: 'info',     message: '12 new CVEs ingested from NVD feed — 3 critical, 5 high' },
   { id: 'a2',  timestamp: '2026-04-25T09:38:00Z', category: 'doctrine',   severity: 'info',     message: 'CASE-2026-0412-001 validation passed — doctrine linkage confirmed' },
-  { id: 'a3',  timestamp: '2026-04-25T09:22:00Z', category: 'replay',     severity: 'info',     message: 'Replay generated for Oracle Deviation Event (CASE-2026-0411-002)' },
+  { id: 'a3',  timestamp: '2026-04-25T09:22:00Z', category: 'replay',     severity: 'info',     message: 'Validation generated for Oracle Deviation Event (CASE-2026-0411-002)' },
   { id: 'a4',  timestamp: '2026-04-25T09:10:00Z', category: 'doctrine',   severity: 'info',     message: 'Doctrine tag applied: Oracle Fallback Required — 3 cases updated' },
   { id: 'a5',  timestamp: '2026-04-25T08:55:00Z', category: 'error',      severity: 'high',     message: '2 records failed normalization — queued for manual review' },
   { id: 'a6',  timestamp: '2026-04-25T08:40:00Z', category: 'ingest',     severity: 'info',     message: 'SlowMist source sync completed — 8 new records ingested' },
@@ -297,6 +297,12 @@ export const MOCK_METRICS: CaseLibraryMetrics = {
     { source: 'ImmuneFi',  count: 8,  color: '#3B82F6' },
     { source: 'Manual',    count: 6,  color: '#8B5CF6' },
     { source: 'Research',  count: 5,  color: '#D4AF37' },
+  ],
+  priorityDistribution: [
+    { priorityBand: 'critical', count: 5 },
+    { priorityBand: 'high',     count: 10 },
+    { priorityBand: 'medium',   count: 9 },
+    { priorityBand: 'low',      count: 4 },
   ],
   severityDistribution: [
     { severity: 'critical', count: 9 },

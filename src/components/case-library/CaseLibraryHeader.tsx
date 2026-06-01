@@ -60,7 +60,7 @@ export function CaseLibraryHeader({ stats, syncing, canManageSources, onSync, on
               </span>
             </div>
             <p style={{ margin: 0, fontSize: 11.5, color: CLR.muted, lineHeight: 1.5, maxWidth: 560 }}>
-              Global archive of incidents, CVEs, advisories, and replayable continuity intelligence.
+              Global archive of incidents, CVEs, advisories, and validation-ready continuity intelligence.
             </p>
           </div>
         </div>
@@ -88,7 +88,7 @@ export function CaseLibraryHeader({ stats, syncing, canManageSources, onSync, on
           { label: 'Last Sync',  value: lastSync,      color: CLR.green  },
           { label: 'Pipeline',   value: pipeLabel,     color: pipeColor  },
           { label: 'Library',    value: libLabel,      color: libColor   },
-          { label: 'Replay',     value: replayCov,     color: CLR.blue   },
+          { label: 'Validation',     value: replayCov,     color: CLR.blue   },
           { label: 'Doctrine',   value: doctrinePct,   color: CLR.gold   },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

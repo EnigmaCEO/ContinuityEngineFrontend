@@ -40,6 +40,19 @@ const CATEGORY_ICON: Record<CaseLibraryActivityItem['category'], React.ElementTy
   escalation: AlertTriangle,
 };
 
+function validationVocabulary(text: string): string {
+  return text
+    .replaceAll('Auto-replay', 'Auto-validation')
+    .replaceAll('auto-replay', 'auto-validation')
+    .replaceAll('replayed', 'validated')
+    .replaceAll('Replayable', 'Ready for Validation')
+    .replaceAll('replayable', 'ready for validation')
+    .replaceAll('replaying', 'validating')
+    .replaceAll('Replay', 'Validation')
+    .replaceAll('replay', 'validation')
+    .replaceAll('REPLAY', 'VALIDATION');
+}
+
 function severityAccent(sev: CaseLibraryActivityItem['severity']): string | undefined {
   if (!sev || sev === 'info') return undefined;
   if (sev === 'critical') return CLR.red;
@@ -103,6 +116,7 @@ export function CaseLibraryActivityFeed({ items, loading }: Props) {
               const accent      = severityAccent(item.severity);
               const Icon        = CATEGORY_ICON[item.category] ?? FileText;
               const freshness   = item.category === 'sync' ? parseFreshnessTag(item.message) : null;
+              const message     = validationVocabulary(item.message);
               const freshBadge  = freshness ? FRESHNESS_BADGE[freshness] : null;
               return (
                 <div
@@ -124,7 +138,7 @@ export function CaseLibraryActivityFeed({ items, loading }: Props) {
                   {/* Message */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ fontSize: 11, color: accent ? accent : '#CBD5E1', lineHeight: 1.45 }}>
-                      {item.message}
+                      {message}
                     </span>
                     {freshBadge && (
                       <span style={{
