@@ -159,6 +159,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const isOperator = effectiveMe.permissions.canViewGlobalModules;
   const isAdminRoute = pathname.startsWith("/dashboard/admin");
   const isSceOperationsRoute = [
+    "/dashboard/radar-service",
     "/dashboard/red-team",
     "/dashboard/blue-team",
     "/dashboard/black-ops",

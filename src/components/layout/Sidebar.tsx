@@ -49,8 +49,7 @@ const navSections: NavSection[] = [
       { href: "/dashboard/project-map", icon: Building2, label: "Project Map" },
       { href: "/dashboard/defense-review", icon: ClipboardList, label: "Defense Reviews" },
       { href: "/dashboard/adapters", icon: Cpu, label: "Execution Adapters" },
-      { href: "/dashboard/bridge-monitor", icon: Activity, label: "Bridge Monitor" },
-      { href: "/dashboard/oracle-monitor", icon: Eye, label: "Oracle Monitor" },
+      { href: "/dashboard/radar-monitor", icon: Activity, label: "Radar Monitor" },
       { href: "/dashboard/audit", icon: ShieldCheck, label: "Verification & Audit" },
       { href: "/dashboard/reports", icon: LayoutDashboard, label: "Reports" },
       { href: "/dashboard/admin/accounts", icon: Building2, label: "Admin / Accounts", accountManagerOnly: true },
@@ -60,6 +59,7 @@ const navSections: NavSection[] = [
     heading: "SCE OPERATIONS",
     adminOnly: true,
     items: [
+      { href: "/dashboard/radar-service", icon: Building2, label: "Radar Service Ops" },
       { href: "/dashboard/red-team", icon: Zap, label: "Red Team" },
       { href: "/dashboard/blue-team", icon: Shield, label: "Blue Team" },
       { href: "/dashboard/black-ops", icon: EyeOff, label: "Black Ops" },
