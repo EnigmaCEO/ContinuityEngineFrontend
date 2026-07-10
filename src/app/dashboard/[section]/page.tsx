@@ -1177,9 +1177,6 @@ function RadarAlertPanel({
                       <Badge label={monitorLabel(alert.monitorType).toUpperCase()} color={accentColor} />
                       <Badge label={alert.status.toUpperCase()} color="#94A3B8" />
                       <Badge label={formatProvenanceLabel(alert.provenance).toUpperCase()} color={provenanceColor(alert.provenance)} />
-                      {alert.objectPurpose ? (
-                        <Badge label={formatObjectPurposeLabel(alert.objectPurpose).toUpperCase()} color={objectPurposeColor(alert.objectPurpose)} />
-                      ) : null}
                       {signal ? (
                         <Badge label={signalBadgeLabel(signal.broadcastTier)} color={signalBadgeColor(signal.broadcastTier)} />
                       ) : null}
@@ -1209,11 +1206,10 @@ function RadarAlertPanel({
                     <MetricLine label="Observed" value={alert.observedValue ?? "n/a"} />
                     <MetricLine label="Expected" value={alert.expectedValue ?? "n/a"} />
                     <MetricLine label="Signal Type" value={formatProvenanceLabel(alert.provenance)} />
-                    <MetricLine label="Object Purpose" value={alert.objectPurpose ? formatObjectPurposeLabel(alert.objectPurpose) : "n/a"} />
                     <MetricLine label="Object" value={alert.monitorObjectId ?? "n/a"} />
                   </div>
                   {alert.reasonCode === "ORACLE_STALE" && alert.evidence ? (
-                    <OracleAlertEvidenceSection evidence={alert.evidence} objectPurpose={alert.objectPurpose} />
+                    <OracleAlertEvidenceSection evidence={alert.evidence} />
                   ) : null}
                   {alert.monitorType === "bridge" && alert.bridgeEvidence ? (
                     <BridgeAlertEvidenceSection evidence={alert.bridgeEvidence} confidence={alert.confidence} />
@@ -2453,11 +2449,14 @@ function signalBadgeColor(value: string): string {
 
 function OracleAlertEvidenceSection({
   evidence,
-  objectPurpose,
 }: {
   evidence: ChainlinkOracleEvidenceDetails;
-  objectPurpose?: RadarObjectPurpose | null;
 }) {
+  const heartbeatLabel =
+    evidence.heartbeatMetadataStatus === "verified" ? "Declared Heartbeat"
+    : evidence.heartbeatMetadataStatus === "manually_configured" ? "Configured Heartbeat"
+    : "Heartbeat Metadata";
+
   return (
     <div
       style={{
@@ -2488,15 +2487,33 @@ function OracleAlertEvidenceSection({
       >
         <MetricLine label="Price" value={evidence.normalizedPrice ?? "n/a"} />
         <MetricLine label="Round" value={evidence.roundId != null ? String(evidence.roundId) : "n/a"} />
+        <MetricLine label="Contract" value={evidence.contractAddress ?? "n/a"} />
         <MetricLine label="Updated" value={evidence.updatedAt ? formatTimestamp(evidence.updatedAt) : "n/a"} />
+        <MetricLine label="Observed At" value={evidence.observedAt ? formatTimestamp(evidence.observedAt) : "n/a"} />
         <MetricLine label="Feed Age" value={formatDurationSeconds(evidence.feedAgeSeconds)} />
+        <MetricLine label={heartbeatLabel} value={formatDurationSeconds(evidence.expectedHeartbeatSeconds)} />
         <MetricLine label="Warning After" value={formatDurationSeconds(evidence.warningAfterSeconds)} />
         <MetricLine label="Critical After" value={formatDurationSeconds(evidence.criticalAfterSeconds)} />
-        <MetricLine
-          label="Purpose"
-          value={objectPurpose ? formatObjectPurposeLabel(objectPurpose) : (evidence.objectPurpose ? formatObjectPurposeLabel(evidence.objectPurpose) : "n/a")}
-        />
       </div>
+      {evidence.heartbeatSourceUrl ? (
+        <a
+          href={evidence.heartbeatSourceUrl}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            color: "#F5E7A1",
+            fontSize: 11,
+            fontWeight: 700,
+            textDecoration: "none",
+          }}
+        >
+          Heartbeat Source
+          <ExternalLink size={13} />
+        </a>
+      ) : null}
     </div>
   );
 }

@@ -173,11 +173,14 @@ export interface ChainlinkOracleEvidenceDetails {
   decimals?: number | null;
   roundId?: number | null;
   updatedAt?: string | null;
+  observedAt?: string | null;
   feedAgeSeconds?: number | null;
   expectedHeartbeatSeconds?: number | null;
   watchAfterSeconds?: number | null;
   warningAfterSeconds?: number | null;
   criticalAfterSeconds?: number | null;
+  heartbeatMetadataStatus?: OracleCoverageOfficialMetadataStatus | null;
+  heartbeatSourceUrl?: string | null;
   contractAddress?: string | null;
   chain?: string | null;
   pair?: string | null;
