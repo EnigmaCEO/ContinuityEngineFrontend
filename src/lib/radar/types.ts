@@ -172,6 +172,7 @@ export interface ChainlinkOracleEvidenceDetails {
   rawAnswer?: number | null;
   decimals?: number | null;
   roundId?: number | null;
+  blockNumber?: number | null;
   updatedAt?: string | null;
   observedAt?: string | null;
   feedAgeSeconds?: number | null;

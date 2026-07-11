@@ -1159,6 +1159,16 @@ function RadarAlertPanel({
           >
             {alerts.map((alert) => {
               const signal = signalQualityByAlertId.get(alert.id);
+              const isOracleStale = alert.reasonCode === "ORACLE_STALE" && !!alert.evidence;
+              const observedMetric = isOracleStale
+                ? { label: "Feed Age", value: formatDurationSeconds(alert.evidence?.feedAgeSeconds) }
+                : { label: "Observed", value: alert.observedValue ?? "n/a" };
+              const expectedMetric = isOracleStale
+                ? {
+                    label: oracleHeartbeatMetricLabel(alert.evidence),
+                    value: formatDurationSeconds(alert.evidence?.expectedHeartbeatSeconds),
+                  }
+                : { label: "Expected", value: alert.expectedValue ?? "n/a" };
               return (
                 <article
                   key={alert.id}
@@ -1175,7 +1185,7 @@ function RadarAlertPanel({
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       <Badge label={alert.severity.toUpperCase()} color={severityColor(alert.severity)} />
                       <Badge label={monitorLabel(alert.monitorType).toUpperCase()} color={accentColor} />
-                      <Badge label={alert.status.toUpperCase()} color="#94A3B8" />
+                      <Badge label={alert.status.toUpperCase()} color={alertStatusColor(alert.status)} />
                       <Badge label={formatProvenanceLabel(alert.provenance).toUpperCase()} color={provenanceColor(alert.provenance)} />
                       {signal ? (
                         <Badge label={signalBadgeLabel(signal.broadcastTier)} color={signalBadgeColor(signal.broadcastTier)} />
@@ -1203,8 +1213,8 @@ function RadarAlertPanel({
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
                     <MetricLine label="Alert Confidence" value={`${confidenceLabel(alert.confidence)} / ${alert.confidence}`} />
                     <MetricLine label="Reason" value={humanizeReasonCode(alert.reasonCode)} />
-                    <MetricLine label="Observed" value={alert.observedValue ?? "n/a"} />
-                    <MetricLine label="Expected" value={alert.expectedValue ?? "n/a"} />
+                    <MetricLine label={observedMetric.label} value={observedMetric.value} />
+                    <MetricLine label={expectedMetric.label} value={expectedMetric.value} />
                     <MetricLine label="Signal Type" value={formatProvenanceLabel(alert.provenance)} />
                     <MetricLine label="Object" value={alert.monitorObjectId ?? "n/a"} />
                   </div>
@@ -1373,7 +1383,7 @@ function LpMonitorPage({ alerts, alertError }: { alerts: RadarAlert[]; alertErro
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <Badge label={alert.severity.toUpperCase()} color={severityColor(alert.severity)} />
                     <Badge label="LP" color="#10B981" />
-                    <Badge label={alert.status.toUpperCase()} color="#94A3B8" />
+                    <Badge label={alert.status.toUpperCase()} color={alertStatusColor(alert.status)} />
                   </div>
                   <div style={{ fontSize: 10, color: "rgba(148,163,184,0.68)", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>
                     {formatTimestamp(alert.updatedAt)}
@@ -2447,11 +2457,38 @@ function signalBadgeColor(value: string): string {
   return "#F59E0B";
 }
 
+function alertStatusColor(status: string): string {
+  if (status === "resolved") return "#22C55E";
+  if (status === "superseded") return "#F59E0B";
+  return "#94A3B8";
+}
+
+function oracleHeartbeatMetricLabel(evidence: ChainlinkOracleEvidenceDetails | null | undefined): string {
+  if (!evidence) return "Expected";
+  if (evidence.heartbeatMetadataStatus === "verified") return "Declared Heartbeat";
+  if (evidence.heartbeatMetadataStatus === "manually_configured") return "Configured Heartbeat";
+  return "Expected Heartbeat";
+}
+
+function oracleHeartbeatMetadataLabel(evidence: ChainlinkOracleEvidenceDetails): string {
+  if (evidence.heartbeatMetadataStatus === "verified") return "Verified";
+  if (evidence.heartbeatMetadataStatus === "manually_configured") return "Configured";
+  return "Pending";
+}
+
+function oracleHeartbeatMetadataColor(evidence: ChainlinkOracleEvidenceDetails): string {
+  if (evidence.heartbeatMetadataStatus === "verified") return "#22C55E";
+  if (evidence.heartbeatMetadataStatus === "manually_configured") return "#F59E0B";
+  return "#94A3B8";
+}
+
 function OracleAlertEvidenceSection({
   evidence,
 }: {
   evidence: ChainlinkOracleEvidenceDetails;
 }) {
+  const heartbeatStateLabel = oracleHeartbeatMetadataLabel(evidence);
+  const heartbeatStateColor = oracleHeartbeatMetadataColor(evidence);
   const heartbeatLabel =
     evidence.heartbeatMetadataStatus === "verified" ? "Declared Heartbeat"
     : evidence.heartbeatMetadataStatus === "manually_configured" ? "Configured Heartbeat"
@@ -2485,15 +2522,16 @@ function OracleAlertEvidenceSection({
           gap: 8,
         }}
       >
-        <MetricLine label="Price" value={evidence.normalizedPrice ?? "n/a"} />
-        <MetricLine label="Round" value={evidence.roundId != null ? String(evidence.roundId) : "n/a"} />
-        <MetricLine label="Contract" value={evidence.contractAddress ?? "n/a"} />
-        <MetricLine label="Updated" value={evidence.updatedAt ? formatTimestamp(evidence.updatedAt) : "n/a"} />
-        <MetricLine label="Observed At" value={evidence.observedAt ? formatTimestamp(evidence.observedAt) : "n/a"} />
-        <MetricLine label="Feed Age" value={formatDurationSeconds(evidence.feedAgeSeconds)} />
-        <MetricLine label={heartbeatLabel} value={formatDurationSeconds(evidence.expectedHeartbeatSeconds)} />
-        <MetricLine label="Warning After" value={formatDurationSeconds(evidence.warningAfterSeconds)} />
-        <MetricLine label="Critical After" value={formatDurationSeconds(evidence.criticalAfterSeconds)} />
+        <EvidenceMetricLine label="Price" value={evidence.normalizedPrice ?? "n/a"} stateLabel="Observed" stateColor="#38BDF8" />
+        <EvidenceMetricLine label="Round" value={evidence.roundId != null ? String(evidence.roundId) : "n/a"} stateLabel="Observed" stateColor="#38BDF8" />
+        <EvidenceMetricLine label="Source Updated" value={evidence.updatedAt ? formatTimestamp(evidence.updatedAt) : "n/a"} stateLabel="Observed" stateColor="#38BDF8" />
+        <EvidenceMetricLine label="Observed At" value={evidence.observedAt ? formatTimestamp(evidence.observedAt) : "n/a"} stateLabel="Observed" stateColor="#38BDF8" />
+        <EvidenceMetricLine label="Block" value={evidence.blockNumber != null ? String(evidence.blockNumber) : "n/a"} stateLabel="Observed" stateColor="#38BDF8" />
+        <EvidenceMetricLine label="Feed Age" value={formatDurationSeconds(evidence.feedAgeSeconds)} stateLabel="Observed" stateColor="#38BDF8" />
+        <EvidenceMetricLine label="Contract" value={evidence.contractAddress ?? "n/a"} stateLabel="Configured" stateColor="#94A3B8" />
+        <EvidenceMetricLine label={heartbeatLabel} value={formatDurationSeconds(evidence.expectedHeartbeatSeconds)} stateLabel={heartbeatStateLabel} stateColor={heartbeatStateColor} />
+        <EvidenceMetricLine label="Warning After" value={formatDurationSeconds(evidence.warningAfterSeconds)} stateLabel={heartbeatStateLabel} stateColor={heartbeatStateColor} />
+        <EvidenceMetricLine label="Critical After" value={formatDurationSeconds(evidence.criticalAfterSeconds)} stateLabel={heartbeatStateLabel} stateColor={heartbeatStateColor} />
       </div>
       {evidence.heartbeatSourceUrl ? (
         <a
@@ -2767,6 +2805,66 @@ function Badge({ label, color }: { label: string; color: string }) {
     >
       {label}
     </span>
+  );
+}
+
+function EvidenceMetricLine({
+  label,
+  value,
+  stateLabel,
+  stateColor,
+}: {
+  label: string;
+  value: string;
+  stateLabel: string;
+  stateColor: string;
+}) {
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+          marginBottom: 4,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 9,
+            color: "rgba(148,163,184,0.72)",
+            letterSpacing: "0.08em",
+          }}
+        >
+          {label.toUpperCase()}
+        </div>
+        <span
+          style={{
+            fontSize: 8,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            color: stateColor,
+            border: `1px solid ${stateColor}40`,
+            background: `${stateColor}12`,
+            borderRadius: 999,
+            padding: "2px 6px",
+          }}
+        >
+          {stateLabel.toUpperCase()}
+        </span>
+      </div>
+      <div
+        style={{
+          fontSize: 12,
+          color: "#E2E8F0",
+          fontWeight: 600,
+          overflowWrap: "anywhere",
+        }}
+      >
+        {value}
+      </div>
+    </div>
   );
 }
 
