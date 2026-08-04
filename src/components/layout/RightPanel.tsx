@@ -314,13 +314,14 @@ export function RightPanel({ me }: { me: SaasMeResponse }) {
           }}
         >
           <span style={S.sectionTitle}>INCIDENT TIMELINE</span>
-          <Link href="/dashboard/incidents" style={S.viewAll}>VIEW ALL</Link>
+          <Link href="/dashboard/incidents" prefetch={false} style={S.viewAll}>VIEW ALL</Link>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           {recentIncidents.length > 0 ? recentIncidents.map((item, i) => (
             <Link
               key={item.id}
               href={`/dashboard/incidents/${encodeURIComponent(item.id)}`}
+              prefetch={false}
               style={{ textDecoration: "none" }}
             >
               <div
@@ -394,6 +395,7 @@ export function RightPanel({ me }: { me: SaasMeResponse }) {
         </div>
         <Link
           href="/dashboard/incidents"
+          prefetch={false}
           style={{
             display: "block",
             width: "100%",

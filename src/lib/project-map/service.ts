@@ -15,23 +15,15 @@ import type {
   ScanAdminSurfaceResponse,
 } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-const SESSION_STORAGE_KEY = "sce_session_token";
+const API_BASE = "/api/backend";
 let projectDashboardFetchCount = 0;
 
-function getSessionToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(SESSION_STORAGE_KEY);
-}
-
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const sessionToken = getSessionToken();
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...(sessionToken ? { "X-SCE-Session": sessionToken } : {}),
       ...(init?.headers ?? {}),
     },
   });
@@ -45,13 +37,11 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 async function apiWithDashboardLog<T>(path: string, init?: RequestInit): Promise<T> {
   const started = performance.now();
-  const sessionToken = getSessionToken();
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...(sessionToken ? { "X-SCE-Session": sessionToken } : {}),
       ...(init?.headers ?? {}),
     },
   });

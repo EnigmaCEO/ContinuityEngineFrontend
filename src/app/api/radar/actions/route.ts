@@ -1,5 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import {
+  hasSessionCredentials,
+  rejectCrossOriginMutation,
+  upstreamSessionHeaders,
+} from "@/app/api/_sessionAuth";
+
 import type {
   LiveDeliveryRunResult,
   RadarClientCreateInput,
@@ -187,15 +193,14 @@ function getAdminHeaders(): HeadersInit {
 }
 
 async function authorizeOperator(req: NextRequest): Promise<OperatorAuthSuccess | OperatorAuthFailure> {
-  const sessionToken = req.headers.get("x-sce-session");
-  if (!sessionToken) {
+  if (!hasSessionCredentials(req)) {
     return {
       response: NextResponse.json({ error: "Authentication required." }, { status: 401 }),
     };
   }
 
   const meRes = await fetch(`${API_BASE}/saas/me`, {
-    headers: { "X-SCE-Session": sessionToken },
+    headers: upstreamSessionHeaders(req),
     cache: "no-store",
   });
   if (!meRes.ok) {
@@ -673,7 +678,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "clientId is required." }, { status: 400 });
     }
     return proxyRequest(
-      `/v1/sce/radar/clients/${clientId}/entitlements`,
+      `/v1/sce/radar/clients/${encodeURIComponent(clientId)}/entitlements`,
       { method: "GET", headers: auth.adminHeaders },
       "Radar entitlement summary",
     );
@@ -683,6 +688,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const crossOriginResponse = rejectCrossOriginMutation(req);
+  if (crossOriginResponse) return crossOriginResponse;
+
   const auth = await authorizeOperator(req);
   if ("response" in auth) {
     return auth.response;

@@ -233,11 +233,6 @@ const SERVICE_GROUPS: ActionGroup[] = [
   { label: "Live Delivery", actions: DELIVERY_ACTIONS },
 ];
 
-function getSessionToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem("sce_session_token");
-}
-
 function extractPreviewPosts(data: unknown): string[] {
   if (!data || typeof data !== "object") return [];
   const d = data as Record<string, unknown>;
@@ -2403,7 +2398,6 @@ export function RadarOperatorConsole({ section }: { section: string }) {
       }
       setLoading(action.key);
       setLastResult(null);
-      const token = getSessionToken();
       const payload = action.key === "public-alerts-preview-send-approved"
         ? {
             previewHash: lastPreviewContext?.previewHash,
@@ -2426,7 +2420,6 @@ export function RadarOperatorConsole({ section }: { section: string }) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(token ? { "X-SCE-Session": token } : {}),
           },
           body: JSON.stringify({ action: action.key, payload }),
         });

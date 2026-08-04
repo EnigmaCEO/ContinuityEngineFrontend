@@ -11,24 +11,16 @@ import type {
   UpdateDefenseReviewRequest,
 } from "./types";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-const SESSION_STORAGE_KEY = "sce_session_token";
-
-function sessionToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(SESSION_STORAGE_KEY);
-}
+const BASE = "/api/backend";
 
 function headers(): HeadersInit {
-  const token = sessionToken();
   return {
     "Content-Type": "application/json",
-    ...(token ? { "X-SCE-Session": token } : {}),
   };
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { ...init, headers: headers() });
+  const res = await fetch(`${BASE}${path}`, { ...init, credentials: "include", headers: headers() });
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
     throw new Error(text || `HTTP ${res.status}`);

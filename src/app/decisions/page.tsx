@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "${API_BASE}";
+const API_BASE = "/api/backend";
 
 type ScenarioType = "stablecoin_depeg" | "oracle_stale" | "chain_halt";
 

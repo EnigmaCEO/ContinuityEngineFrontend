@@ -289,7 +289,7 @@ function SectionHead({
         </span>
       </div>
       {href && action ? (
-        <Link href={href} style={{ textDecoration: "none" }}>
+        <Link href={href} prefetch={false} style={{ textDecoration: "none" }}>
           {actionNode}
         </Link>
       ) : (
@@ -951,7 +951,7 @@ export default function DashboardPage() {
                 <span style={{ fontSize: 8.5, color: MUTED }}>
                   Coverage Pending: <span style={{ color: "#F97316", fontWeight: 700 }}>{formatCount(incidentCoveragePending)}</span>
                 </span>
-                <Link href="/dashboard/incidents" style={{ fontSize: 8.5, color: "rgba(212,175,55,0.72)", letterSpacing: "0.08em", textDecoration: "none" }}>
+                <Link href="/dashboard/incidents" prefetch={false} style={{ fontSize: 8.5, color: "rgba(212,175,55,0.72)", letterSpacing: "0.08em", textDecoration: "none" }}>
                   OPEN INCIDENTS →
                 </Link>
               </div>
@@ -1027,10 +1027,10 @@ export default function DashboardPage() {
                   </div>
                 ))}
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingTop: 7, borderTop: "1px solid rgba(212,175,55,0.06)", marginTop: 2 }}>
-                  <Link href="/dashboard/case-library" style={{ textDecoration: "none", fontSize: 8.5, color: "rgba(212,175,55,0.72)", letterSpacing: "0.07em" }}>
+                  <Link href="/dashboard/case-library" prefetch={false} style={{ textDecoration: "none", fontSize: 8.5, color: "rgba(212,175,55,0.72)", letterSpacing: "0.07em" }}>
                     VIEW SERIOUS CASES →
                   </Link>
-                  <Link href="/dashboard/threat-matrix" style={{ textDecoration: "none", fontSize: 8.5, color: "rgba(212,175,55,0.72)", letterSpacing: "0.07em" }}>
+                  <Link href="/dashboard/threat-matrix" prefetch={false} style={{ textDecoration: "none", fontSize: 8.5, color: "rgba(212,175,55,0.72)", letterSpacing: "0.07em" }}>
                     OPEN THREAT MATRIX →
                   </Link>
                 </div>
@@ -1344,7 +1344,7 @@ export default function DashboardPage() {
                   <div style={{ fontSize: 13, color: TEXT, fontWeight: 700 }}>Route available</div>
                   <div style={{ marginTop: 4, fontSize: 10, color: MUTED }}>Live settings status not configured</div>
                   <div style={{ marginTop: 8 }}>
-                    <Link href="/dashboard/settings" style={{ textDecoration: "none", fontSize: 9, color: "rgba(212,175,55,0.72)", letterSpacing: "0.08em" }}>
+                    <Link href="/dashboard/settings" prefetch={false} style={{ textDecoration: "none", fontSize: 9, color: "rgba(212,175,55,0.72)", letterSpacing: "0.08em" }}>
                       OPEN SETTINGS
                     </Link>
                   </div>

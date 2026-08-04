@@ -1062,10 +1062,7 @@ export default function DefenseReviewReportPage() {
     setDownloading(true);
     setDownloadError("");
     try {
-      const token = window.localStorage.getItem("sce_session_token");
-      const res = await fetch(`/api/defense-review/${review.id}/pdf`, {
-        headers: token ? { "X-SCE-Session": token } : {},
-      });
+      const res = await fetch(`/api/defense-review/${review.id}/pdf`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);

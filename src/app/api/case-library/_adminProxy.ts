@@ -1,6 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import {
+  hasSessionCredentials,
+  rejectCrossOriginMutation,
+  upstreamSessionHeaders,
+} from "@/app/api/_sessionAuth";
+
 const API_BASE = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const MAX_REQUEST_BODY_BYTES = 1024 * 1024;
 
 interface SaasMeResponse {
   permissions?: {
@@ -24,9 +31,16 @@ export async function proxyCaseLibraryAdminPost(
   upstreamPath: string,
   actionLabel: string,
 ): Promise<NextResponse> {
-  const sessionToken = req.headers.get("x-sce-session");
-  if (!sessionToken) {
+  const crossOriginResponse = rejectCrossOriginMutation(req);
+  if (crossOriginResponse) return crossOriginResponse;
+
+  if (!hasSessionCredentials(req)) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
+  const declaredLength = Number(req.headers.get("content-length") ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BODY_BYTES) {
+    return NextResponse.json({ error: "Request body is too large." }, { status: 413 });
   }
 
   const adminKey = process.env.SCE_ADMIN_API_KEY ?? process.env.SCE_DASHBOARD_ADMIN_API_KEY;
@@ -38,7 +52,7 @@ export async function proxyCaseLibraryAdminPost(
   }
 
   const meRes = await fetch(`${API_BASE}/saas/me`, {
-    headers: { "X-SCE-Session": sessionToken },
+    headers: upstreamSessionHeaders(req),
     cache: "no-store",
   });
   if (!meRes.ok) {
@@ -51,6 +65,9 @@ export async function proxyCaseLibraryAdminPost(
   }
 
   const body = await req.text().catch(() => "");
+  if (new TextEncoder().encode(body).byteLength > MAX_REQUEST_BODY_BYTES) {
+    return NextResponse.json({ error: "Request body is too large." }, { status: 413 });
+  }
   const upstreamRes = await fetch(`${API_BASE}${upstreamPath}`, {
     method: "POST",
     headers: {

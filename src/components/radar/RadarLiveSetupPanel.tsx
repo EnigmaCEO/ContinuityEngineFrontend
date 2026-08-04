@@ -63,12 +63,6 @@ interface Props {
   liveDeliveries: RadarLiveDelivery[];
 }
 
-function getSessionToken(sessionToken?: string | null): string | null {
-  if (sessionToken) return sessionToken;
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem("sce_session_token");
-}
-
 function parseList(value: string): string[] {
   return value
     .split(/[\n,]/)
@@ -221,13 +215,11 @@ export function RadarLiveSetupPanel({
       : null);
 
   useEffect(() => {
-    if (!effectiveSelectedClientId || entitlementCache[effectiveSelectedClientId]) {
+    if (!isOperator || !effectiveSelectedClientId || entitlementCache[effectiveSelectedClientId]) {
       return;
     }
 
     let active = true;
-    const token = getSessionToken(session?.sessionToken);
-    if (!token) return;
 
     void (async () => {
       try {
@@ -235,7 +227,6 @@ export function RadarLiveSetupPanel({
           `/api/radar/actions?kind=client-entitlements&clientId=${encodeURIComponent(effectiveSelectedClientId)}`,
           {
             method: "GET",
-            headers: { "X-SCE-Session": token },
             cache: "no-store",
           },
         );
@@ -253,21 +244,15 @@ export function RadarLiveSetupPanel({
     return () => {
       active = false;
     };
-  }, [effectiveSelectedClientId, entitlementCache, session?.sessionToken]);
+  }, [effectiveSelectedClientId, entitlementCache, isOperator]);
 
   if (!isOperator) return null;
 
   async function runAction<T>(action: string, payload?: unknown): Promise<T> {
-    const token = getSessionToken(session?.sessionToken);
-    if (!token) {
-      throw new Error("Authentication required.");
-    }
-
     const res = await fetch("/api/radar/actions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-SCE-Session": token,
       },
       body: JSON.stringify(payload ? { action, payload } : { action }),
     });
@@ -286,12 +271,8 @@ export function RadarLiveSetupPanel({
   }
 
   async function refreshEntitlements(clientId: string) {
-    const token = getSessionToken(session?.sessionToken);
-    if (!token) return;
-
     const res = await fetch(`/api/radar/actions?kind=client-entitlements&clientId=${encodeURIComponent(clientId)}`, {
       method: "GET",
-      headers: { "X-SCE-Session": token },
       cache: "no-store",
     });
     if (!res.ok) return;

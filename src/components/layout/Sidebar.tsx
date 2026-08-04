@@ -167,6 +167,7 @@ export function Sidebar({ me }: { me: SaasMeResponse }) {
                 <Link
                   key={href}
                   href={href}
+                  prefetch={false}
                   style={{
                     display: "flex",
                     alignItems: "center",

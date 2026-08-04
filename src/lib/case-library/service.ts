@@ -21,12 +21,42 @@ import { applyTableParams } from './selectors';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000';
-const SESSION_STORAGE_KEY = 'sce_session_token';
+const API_BASE = '/api/backend';
 
 // Set to true to use local mock data instead of the real backend.
 const USE_MOCK = false;
 let dashboardFetchCount = 0;
+const DASHBOARD_OVERVIEW_TTL_MS = 30_000;
+const INCIDENTS_OVERVIEW_TTL_MS = 15_000;
+const dashboardOverviewCache = new Map<
+  '24h' | '7d' | '30d',
+  { expiresAt: number; data: DashboardOverviewResponse }
+>();
+const dashboardOverviewRequests = new Map<
+  '24h' | '7d' | '30d',
+  Promise<DashboardOverviewResponse>
+>();
+let incidentsOverviewCache: { expiresAt: number; data: IncidentsOverviewResponse } | null = null;
+let incidentsOverviewRequest: Promise<IncidentsOverviewResponse> | null = null;
+
+function apiUrl(path: string): URL {
+  return new URL(`${API_BASE}${path}`, window.location.origin);
+}
+
+function waitForSharedRequest<T>(request: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return request;
+  if (signal.aborted) {
+    return Promise.reject(new DOMException('The operation was aborted.', 'AbortError'));
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    const handleAbort = () => reject(new DOMException('The operation was aborted.', 'AbortError'));
+    signal.addEventListener('abort', handleAbort, { once: true });
+    request
+      .then(resolve, reject)
+      .finally(() => signal.removeEventListener('abort', handleAbort));
+  });
+}
 
 async function fetchJsonWithDashboardLog<T>(url: string, init?: RequestInit): Promise<T> {
   const started = performance.now();
@@ -39,11 +69,6 @@ async function fetchJsonWithDashboardLog<T>(url: string, init?: RequestInit): Pr
   );
   if (!response.ok) throw new Error(`dashboard fetch failed: ${response.status}`);
   return JSON.parse(text) as T;
-}
-
-function getSessionToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return window.localStorage.getItem(SESSION_STORAGE_KEY);
 }
 
 async function errorMessage(response: Response, fallback: string): Promise<string> {
@@ -77,7 +102,7 @@ export async function fetchCases(params: CaseLibraryTableParams): Promise<CaseLi
     return applyTableParams(MOCK_CASES, params);
   }
 
-  const url = new URL(`${API_BASE}/case-library`);
+  const url = apiUrl('/case-library');
 
   if (params.search)         url.searchParams.set('search',         params.search);
   if (params.severity)       url.searchParams.set('severity',       params.severity);
@@ -127,7 +152,7 @@ export async function fetchActivity(limit = 25): Promise<CaseLibraryActivityItem
     await tick();
     return MOCK_ACTIVITY;
   }
-  const url = new URL(`${API_BASE}/case-library/activity`);
+  const url = apiUrl('/case-library/activity');
   url.searchParams.set('limit', String(limit));
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`activity fetch failed: ${res.status}`);
@@ -161,12 +186,10 @@ export async function triggerSync(): Promise<SourceSyncResult | void> {
     await delay(900);
     return;
   }
-  const sessionToken = getSessionToken();
   const res = await fetch('/api/case-library/sync-sources', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(sessionToken ? { 'X-SCE-Session': sessionToken } : {}),
     },
     body: JSON.stringify({
       autoNormalize:        true,
@@ -199,19 +222,15 @@ export async function ingestCase(payload?: unknown): Promise<void> {
 // ─── Doctrine enrichment ──────────────────────────────────────────────────────
 
 export async function enrichDoctrine(caseId: string): Promise<CaseLibraryRecord> {
-  const sessionToken = getSessionToken();
   const res = await fetch(`/api/case-library/${encodeURIComponent(caseId)}/enrich-doctrine`, {
     method: 'POST',
-    headers: {
-      ...(sessionToken ? { 'X-SCE-Session': sessionToken } : {}),
-    },
   });
   if (!res.ok) throw new Error(await errorMessage(res, 'Doctrine enrichment failed'));
   return res.json() as Promise<CaseLibraryRecord>;
 }
 
 export async function batchEnrichDoctrine(limit = 50): Promise<BatchEnrichmentResult> {
-  const url = new URL(`${API_BASE}/case-library/enrich-doctrine/batch`);
+  const url = apiUrl('/case-library/enrich-doctrine/batch');
   url.searchParams.set('limit', String(limit));
   const res = await fetch(url.toString(), { method: 'POST' });
   if (!res.ok) throw new Error(`batch enrich-doctrine failed: ${res.status}`);
@@ -221,37 +240,25 @@ export async function batchEnrichDoctrine(limit = 50): Promise<BatchEnrichmentRe
 // ─── Replay ───────────────────────────────────────────────────────────────────
 
 export async function runReplay(caseId: string): Promise<CaseLibraryRecord> {
-  const sessionToken = getSessionToken();
   const res = await fetch(`/api/case-library/${encodeURIComponent(caseId)}/run-replay`, {
     method: 'POST',
-    headers: {
-      ...(sessionToken ? { 'X-SCE-Session': sessionToken } : {}),
-    },
   });
   if (!res.ok) throw new Error(await errorMessage(res, 'Validation failed'));
   return res.json() as Promise<CaseLibraryRecord>;
 }
 
 export async function batchRunReplay(limit = 50): Promise<BatchReplayResult> {
-  const sessionToken = getSessionToken();
   const params = new URLSearchParams({ limit: String(limit) });
   const res = await fetch(`/api/case-library/replay/batch?${params.toString()}`, {
     method: 'POST',
-    headers: {
-      ...(sessionToken ? { 'X-SCE-Session': sessionToken } : {}),
-    },
   });
   if (!res.ok) throw new Error(await errorMessage(res, 'Batch validation failed'));
   return res.json() as Promise<BatchReplayResult>;
 }
 
 export async function refreshReplayEligibility(): Promise<EligibilityRefreshResult> {
-  const sessionToken = getSessionToken();
   const res = await fetch('/api/case-library/replay/refresh-eligibility', {
     method: 'POST',
-    headers: {
-      ...(sessionToken ? { 'X-SCE-Session': sessionToken } : {}),
-    },
   });
   if (!res.ok) throw new Error(await errorMessage(res, 'Validation eligibility refresh failed'));
   return res.json() as Promise<EligibilityRefreshResult>;
@@ -356,11 +363,57 @@ export async function fetchDashboardOverview(
   criticalWindow: '24h' | '7d' | '30d' = '7d',
   signal?: AbortSignal,
 ): Promise<DashboardOverviewResponse> {
-  const url = new URL(`${API_BASE}/case-library/dashboard/overview`);
+  if (signal?.aborted) {
+    throw new DOMException('The operation was aborted.', 'AbortError');
+  }
+  const cached = dashboardOverviewCache.get(criticalWindow);
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
+
+  const url = apiUrl('/case-library/dashboard/overview');
   url.searchParams.set('criticalWindow', criticalWindow);
-  return fetchJsonWithDashboardLog<DashboardOverviewResponse>(url.toString(), { signal });
+  let request = dashboardOverviewRequests.get(criticalWindow);
+  if (!request) {
+    request = fetchJsonWithDashboardLog<DashboardOverviewResponse>(url.toString())
+      .then((data) => {
+        dashboardOverviewCache.set(criticalWindow, {
+          expiresAt: Date.now() + DASHBOARD_OVERVIEW_TTL_MS,
+          data,
+        });
+        return data;
+      })
+      .finally(() => {
+        dashboardOverviewRequests.delete(criticalWindow);
+      });
+    dashboardOverviewRequests.set(criticalWindow, request);
+  }
+  return waitForSharedRequest(request, signal);
 }
 
 export async function fetchIncidentsOverview(signal?: AbortSignal): Promise<IncidentsOverviewResponse> {
-  return fetchJsonWithDashboardLog<IncidentsOverviewResponse>(`${API_BASE}/incidents/overview`, { signal });
+  if (signal?.aborted) {
+    throw new DOMException('The operation was aborted.', 'AbortError');
+  }
+
+  const now = Date.now();
+  if (incidentsOverviewCache && incidentsOverviewCache.expiresAt > now) {
+    return incidentsOverviewCache.data;
+  }
+
+  if (!incidentsOverviewRequest) {
+    incidentsOverviewRequest = fetchJsonWithDashboardLog<IncidentsOverviewResponse>(
+      `${API_BASE}/incidents/overview`,
+    )
+      .then((data) => {
+        incidentsOverviewCache = {
+          expiresAt: Date.now() + INCIDENTS_OVERVIEW_TTL_MS,
+          data,
+        };
+        return data;
+      })
+      .finally(() => {
+        incidentsOverviewRequest = null;
+      });
+  }
+
+  return waitForSharedRequest(incidentsOverviewRequest, signal);
 }

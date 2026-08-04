@@ -13,15 +13,15 @@ import type {
   ProjectControl,
   ProjectRelevance,
 } from "@/lib/project-map/types";
+import { hasSessionCredentials, upstreamSessionHeaders } from "@/app/api/_sessionAuth";
 
 const API_BASE = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
-async function serverFetch<T>(endpoint: string, token: string | null): Promise<T> {
+async function serverFetch<T>(endpoint: string, authHeaders: Headers): Promise<T> {
+  const headers = new Headers(authHeaders);
+  headers.set("Content-Type", "application/json");
   const res = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { "X-SCE-Session": token } : {}),
-    },
+    headers,
     cache: "no-store",
   });
   if (!res.ok) {
@@ -36,11 +36,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const token = req.headers.get("x-sce-session");
+  if (!hasSessionCredentials(req)) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+  const authHeaders = upstreamSessionHeaders(req);
 
   let review: DefenseReview;
   try {
-    review = await serverFetch<DefenseReview>(`/defense-reviews/${id}`, token);
+    review = await serverFetch<DefenseReview>(`/defense-reviews/${id}`, authHeaders);
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Review not found" },
@@ -52,14 +55,14 @@ export async function GET(
 
   const [projectResult, assetsResult, findingsResult, controlsResult, relevanceResult] =
     await Promise.allSettled([
-      serverFetch<Project>(`/projects/${pid}`, token),
-      serverFetch<{ items: ProjectAsset[] }>(`/projects/${pid}/assets?limit=100`, token),
+      serverFetch<Project>(`/projects/${pid}`, authHeaders),
+      serverFetch<{ items: ProjectAsset[] }>(`/projects/${pid}/assets?limit=100`, authHeaders),
       serverFetch<{ items: AdminSurfaceFinding[] }>(
         `/projects/${pid}/admin-surface-findings?limit=100`,
-        token,
+        authHeaders,
       ),
-      serverFetch<{ items: ProjectControl[] }>(`/projects/${pid}/controls?limit=100`, token),
-      serverFetch<ProjectRelevance>(`/projects/${pid}/relevance`, token),
+      serverFetch<{ items: ProjectControl[] }>(`/projects/${pid}/controls?limit=100`, authHeaders),
+      serverFetch<ProjectRelevance>(`/projects/${pid}/relevance`, authHeaders),
     ]);
 
   const logoBuffer = fs.readFileSync(path.join(process.cwd(), "public", "defense.png"));

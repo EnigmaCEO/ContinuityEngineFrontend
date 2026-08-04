@@ -77,9 +77,9 @@ src/
 
 ## Authentication
 
-Login is email-based (no password). On success the API returns a session token stored in `localStorage` under the key `sce_session_token` and passed on subsequent requests via the `X-SCE-Session` header.
+Login is currently email-based (no password). On success, the API sets an HttpOnly, SameSite session cookie through the same-origin backend proxy. Existing browser sessions that still have `sce_session_token` in `localStorage` are migrated to the cookie after the next successful identity check, then the legacy value is deleted.
 
-`GET /saas/me` is called on every page load to validate the session and hydrate the current user, account memberships, and permissions.
+`GET /saas/me` validates the session and hydrates the current user, account memberships, and permissions. Successful client lookups are reused for 30 seconds to avoid duplicate navigation requests.
 
 ### Roles
 
@@ -87,12 +87,12 @@ Login is email-based (no password). On success the API returns a session token s
 
 ## API
 
-Service files use `NEXT_PUBLIC_API_URL` when set and otherwise default to `http://127.0.0.1:8000`.
+Browser service files call the same-origin `/api/backend/*` proxy. The proxy forwards requests to the server-only `API_URL`, falling back to `NEXT_PUBLIC_API_URL` and then `http://127.0.0.1:8000`. This keeps session traffic same-origin and avoids browser CORS preflights.
 
 Production dashboard mutations that require backend admin authorization are routed through Next API handlers so the admin key is never exposed to the browser. Configure the web service with:
 
 ```bash
-NEXT_PUBLIC_API_URL=https://your-api-domain.com
+API_URL=https://your-api-domain.com
 SCE_ADMIN_API_KEY=<same strong secret configured on the API service>
 ```
 

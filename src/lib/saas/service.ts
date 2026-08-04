@@ -8,22 +8,21 @@ import type {
   User,
 } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const API_BASE = "/api/backend";
 const SESSION_STORAGE_KEY = "sce_session_token";
 let dashboardAdminFetchCount = 0;
+const ME_CACHE_TTL_MS = 30_000;
+let meCache: { expiresAt: number; data: SaasMeResponse } | null = null;
+let meRequest: Promise<SaasMeResponse> | null = null;
 
 function getSessionToken(): string | null {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem(SESSION_STORAGE_KEY);
 }
 
-function setSessionToken(token: string | null): void {
+function clearLegacySessionToken(): void {
   if (typeof window === "undefined") return;
-  if (!token) {
-    window.localStorage.removeItem(SESSION_STORAGE_KEY);
-    return;
-  }
-  window.localStorage.setItem(SESSION_STORAGE_KEY, token);
+  window.localStorage.removeItem(SESSION_STORAGE_KEY);
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -71,17 +70,36 @@ export async function login(email: string): Promise<SaasMeResponse> {
     method: "POST",
     body: JSON.stringify({ email }),
   });
-  setSessionToken(response.sessionToken ?? null);
+  clearLegacySessionToken();
+  meCache = { expiresAt: Date.now() + ME_CACHE_TTL_MS, data: response };
   return response;
 }
 
 export async function logout(): Promise<void> {
-  await api("/saas/logout", { method: "POST" });
-  setSessionToken(null);
+  try {
+    await api("/saas/logout", { method: "POST" });
+  } finally {
+    meCache = null;
+    meRequest = null;
+    clearLegacySessionToken();
+  }
 }
 
 export async function fetchMe(): Promise<SaasMeResponse> {
-  return api<SaasMeResponse>("/saas/me", { cache: "no-store" });
+  if (meCache && meCache.expiresAt > Date.now()) return meCache.data;
+  if (!meRequest) {
+    meRequest = api<SaasMeResponse>("/saas/me", { cache: "no-store" })
+      .then((data) => {
+        // The backend proxy migrates any legacy header session to an HttpOnly cookie.
+        clearLegacySessionToken();
+        meCache = { expiresAt: Date.now() + ME_CACHE_TTL_MS, data };
+        return data;
+      })
+      .finally(() => {
+        meRequest = null;
+      });
+  }
+  return meRequest;
 }
 
 export async function fetchAdminSummary(): Promise<{ accounts: number; users: number; accessRequests: number }> {

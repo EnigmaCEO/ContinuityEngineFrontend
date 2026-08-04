@@ -96,6 +96,97 @@ function roleLabel(role: MembershipRole | null | undefined): string {
   return role ? role.replaceAll("_", " ") : "unassigned";
 }
 
+function DashboardSessionLoadingShell({ redirecting }: { redirecting: boolean }) {
+  const placeholder = (width: string) => ({
+    width,
+    height: 8,
+    borderRadius: 999,
+    background: "rgba(148,163,184,0.13)",
+  });
+
+  return (
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "#080a0e" }}>
+      <aside
+        style={{
+          width: 176,
+          minWidth: 176,
+          borderRight: "1px solid rgba(212,175,55,0.18)",
+          background: "#0b0d12",
+          padding: "24px 14px",
+        }}
+      >
+        <div style={{ color: "#D4AF37", fontSize: 15, fontWeight: 700, letterSpacing: "0.1em" }}>
+          SAGITTA
+        </div>
+        <div style={{ color: "rgba(212,175,55,0.55)", fontSize: 8, letterSpacing: "0.18em", marginTop: 3 }}>
+          CONTINUITY ENGINE
+        </div>
+        <div style={{ display: "grid", gap: 18, marginTop: 38 }}>
+          {["72%", "88%", "64%", "82%", "70%", "90%"].map((width, index) => (
+            <div key={`${width}-${index}`} style={placeholder(width)} />
+          ))}
+        </div>
+      </aside>
+
+      <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        <header
+          style={{
+            minHeight: 62,
+            borderBottom: "1px solid rgba(212,175,55,0.1)",
+            padding: "12px 20px",
+            background: "rgba(8,10,14,0.92)",
+          }}
+        >
+          <div style={{ fontSize: 10, letterSpacing: "0.16em", color: "rgba(212,175,55,0.62)" }}>
+            SESSION MODE
+          </div>
+          <div style={{ marginTop: 5, fontSize: 13, color: "#E2E8F0", fontWeight: 600 }}>
+            {redirecting ? "Redirecting to login" : "Resolving secure session"}
+          </div>
+        </header>
+        <div style={{ padding: 20, overflow: "hidden" }}>
+          <div style={{ color: "#D4AF37", fontSize: 11, letterSpacing: "0.14em" }}>COMMAND OVERVIEW</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginTop: 18 }}>
+            {[0, 1, 2, 3, 4, 5].map((item) => (
+              <div
+                key={item}
+                style={{
+                  minHeight: item < 3 ? 112 : 180,
+                  border: "1px solid rgba(212,175,55,0.12)",
+                  borderRadius: 8,
+                  background: "rgba(10,12,18,0.86)",
+                  padding: 14,
+                }}
+              >
+                <div style={placeholder("42%")} />
+                <div style={{ ...placeholder("76%"), marginTop: 18, height: 13 }} />
+                <div style={{ ...placeholder("58%"), marginTop: 10 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+
+      <aside
+        style={{
+          width: 316,
+          minWidth: 316,
+          borderLeft: "1px solid rgba(212,175,55,0.18)",
+          background: "#0b0d12",
+          padding: "18px 16px",
+        }}
+      >
+        <div style={{ color: "#D4AF37", fontSize: 13, fontWeight: 700, letterSpacing: "0.1em" }}>SCE PORTAL</div>
+        <div style={{ display: "grid", gap: 20, marginTop: 32 }}>
+          {["86%", "70%", "92%", "64%", "78%"].map((width, index) => (
+            <div key={`${width}-${index}`} style={placeholder(width)} />
+          ))}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -103,6 +194,21 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [previewRole, setPreviewRoleState] = useState<MembershipRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (pathname !== "/dashboard") return;
+    let cancelled = false;
+    void import("@/lib/case-library/service").then(({ fetchDashboardOverview, fetchIncidentsOverview }) => {
+      if (cancelled) return;
+      void Promise.allSettled([
+        fetchDashboardOverview("7d"),
+        fetchIncidentsOverview(),
+      ]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,22 +240,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }, [pathname, router]);
 
   if (loading || !me) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#080a0e",
-          color: "#D4AF37",
-          letterSpacing: "0.14em",
-          fontSize: 12,
-        }}
-      >
-        {error ? "Redirecting to login" : "Loading session context"}
-      </div>
-    );
+    return <DashboardSessionLoadingShell redirecting={Boolean(error)} />;
   }
 
   const realRole = me.currentRole ?? null;
