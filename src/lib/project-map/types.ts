@@ -135,6 +135,20 @@ export interface ProjectAccountOverview {
   zeroCustodyStatus: boolean;
 }
 
+export interface ProjectListStats {
+  assetCount: number;
+  openFindingCount: number;
+  criticalCount: number;
+  highCount: number;
+  highestSeverity?: AdminFindingSeverity | null;
+  lastScanAt?: string | null;
+}
+
+export interface ProjectMapBootstrap {
+  items: Project[];
+  stats: Record<string, ProjectListStats>;
+}
+
 export interface ProjectRelevantThreatFamily {
   threatFamily: string;
   relevanceScore: number;
@@ -169,6 +183,14 @@ export interface ProjectRelevance {
   relevanceScore: number;
   summary: string;
   generatedAt: string;
+}
+
+export interface ProjectDetail {
+  project: Project;
+  assets: ProjectAsset[];
+  findings: AdminSurfaceFinding[];
+  relevance: ProjectRelevance;
+  controls: ProjectControl[];
 }
 
 export interface ProjectControl {

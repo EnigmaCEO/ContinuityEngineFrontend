@@ -35,11 +35,7 @@ import type {
   SourceVerificationHealthSummary,
 } from "@/lib/defense-review/types";
 import {
-  fetchAdminSurfaceFindings,
-  fetchProject,
-  fetchProjectAssets,
-  fetchProjectControls,
-  fetchProjectRelevance,
+  fetchProjectDetail,
 } from "@/lib/project-map/service";
 import type {
   AdminSurfaceFinding,
@@ -1022,19 +1018,12 @@ export default function DefenseReviewReportPage() {
       .then(async (rev) => {
         setReview(rev);
         const pid = rev.projectId;
-        const [proj, ast, fnd, ctrl] = await Promise.all([
-          fetchProject(pid).catch(() => null),
-          fetchProjectAssets(pid).catch(() => []),
-          fetchAdminSurfaceFindings(pid).catch(() => []),
-          fetchProjectControls(pid).catch(() => []),
-        ]);
-        setProject(proj);
-        setAssets(ast);
-        setFindings(fnd);
-        setControls(ctrl);
-        fetchProjectRelevance(pid)
-          .then(setRelevance)
-          .catch(() => setRelevance(null));
+        const detail = await fetchProjectDetail(pid);
+        setProject(detail.project);
+        setAssets(detail.assets);
+        setFindings(detail.findings);
+        setControls(detail.controls);
+        setRelevance(detail.relevance);
       })
       .catch((e: unknown) =>
         setError(e instanceof Error ? e.message : "Failed to load review"),

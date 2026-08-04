@@ -4,6 +4,7 @@ import type {
   Membership,
   MembershipDetail,
   MembershipRole,
+  SaasAdminBootstrap,
   SaasMeResponse,
   User,
 } from "./types";
@@ -104,6 +105,10 @@ export async function fetchMe(): Promise<SaasMeResponse> {
 
 export async function fetchAdminSummary(): Promise<{ accounts: number; users: number; accessRequests: number }> {
   return apiWithDashboardLog<{ accounts: number; users: number; accessRequests: number }>("/saas/admin-summary", { cache: "no-store" });
+}
+
+export async function fetchAdminBootstrap(): Promise<SaasAdminBootstrap> {
+  return api<SaasAdminBootstrap>("/saas/admin-bootstrap", { cache: "no-store" });
 }
 
 export async function requestAccess(payload: {

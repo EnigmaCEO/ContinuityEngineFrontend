@@ -9,11 +9,8 @@ import {
   archiveProject,
   createProject,
   createProjectAsset,
-  fetchAdminSurfaceFindings,
-  fetchProjectControls,
-  fetchProjectAssets,
-  fetchProjectRelevance,
-  fetchProjects,
+  fetchProjectDetail,
+  fetchProjectMapBootstrap,
   generateProjectControls,
   scanAdminSurface,
   submitProjectIntake,
@@ -22,7 +19,7 @@ import {
   verifyAllProjectControls,
   verifyProjectControl,
 } from "@/lib/project-map/service";
-import type { AdminSurfaceFinding, ContractEntry, Project, ProjectAsset, ProjectControl, ProjectControlStatus, ProjectIntakeResponse, ProjectRelevance, ProtocolMatrixIntakeResponse } from "@/lib/project-map/types";
+import type { AdminSurfaceFinding, ContractEntry, Project, ProjectAsset, ProjectControl, ProjectControlStatus, ProjectIntakeResponse, ProjectListStats, ProjectRelevance, ProtocolMatrixIntakeResponse } from "@/lib/project-map/types";
 import type { MembershipRole } from "@/lib/saas/types";
 import { createDefenseReview, fetchDefenseReviews } from "@/lib/defense-review/service";
 
@@ -45,16 +42,7 @@ const severityColors: Record<AdminSurfaceFinding["severity"], string> = {
 };
 
 type TabKey = "assets" | "admin" | "threats" | "doctrine" | "controls";
-type ProjectStats = {
-  assetCount: number;
-  openFindingCount: number;
-  criticalCount: number;
-  highCount: number;
-  highestSeverity: AdminSurfaceFinding["severity"] | null;
-  lastScanAt: string | null;
-};
-
-const emptyStats: ProjectStats = {
+const emptyStats: ProjectListStats = {
   assetCount: 0,
   openFindingCount: 0,
   criticalCount: 0,
@@ -155,7 +143,7 @@ export default function ProjectMapPage() {
   const canVerifyControls = canVerifyControlsForRole(role);
 
   const [projects, setProjects] = useState<Project[]>([]);
-  const [projectStats, setProjectStats] = useState<Record<string, ProjectStats>>({});
+  const [projectStats, setProjectStats] = useState<Record<string, ProjectListStats>>({});
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [assets, setAssets] = useState<ProjectAsset[]>([]);
   const [findings, setFindings] = useState<AdminSurfaceFinding[]>([]);
@@ -185,46 +173,18 @@ export default function ProjectMapPage() {
   const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? null;
   const selectedStats = selectedProjectId ? projectStats[selectedProjectId] ?? emptyStats : emptyStats;
 
-  async function loadProjectStats(nextProjects: Project[]) {
-    const projectsForStats = nextProjects.slice(0, 25);
-    const entries = await Promise.all(
-      projectsForStats.map(async (project) => {
-        try {
-          const [projectAssets, projectFindings] = await Promise.all([
-            fetchProjectAssets(project.id, 50),
-            fetchAdminSurfaceFindings(project.id, 50),
-          ]);
-          const openFindings = projectFindings.filter((finding) => finding.status === "open");
-          const lastScanAt = projectFindings.reduce<string | null>((latest, finding) => {
-            if (!latest) return finding.updatedAt;
-            return new Date(finding.updatedAt).getTime() > new Date(latest).getTime() ? finding.updatedAt : latest;
-          }, null);
-          return [
-            project.id,
-            {
-              assetCount: projectAssets.filter((asset) => asset.status !== "archived").length,
-              openFindingCount: openFindings.length,
-              criticalCount: openFindings.filter((finding) => finding.severity === "critical").length,
-              highCount: openFindings.filter((finding) => finding.severity === "high").length,
-              highestSeverity: highestSeverity(openFindings),
-              lastScanAt,
-            },
-          ] as const;
-        } catch {
-          return [project.id, emptyStats] as const;
-        }
-      }),
-    );
-    setProjectStats(Object.fromEntries(entries));
+  async function refreshProjectList() {
+    const bootstrap = await fetchProjectMapBootstrap(50);
+    setProjects(bootstrap.items);
+    setProjectStats(bootstrap.stats);
+    return bootstrap.items;
   }
 
   async function loadProjects(nextSelectedId?: string) {
     setLoading(true);
     setError("");
     try {
-      const nextProjects = await fetchProjects(50);
-      setProjects(nextProjects);
-      void loadProjectStats(nextProjects);
+      const nextProjects = await refreshProjectList();
       const resolvedId =
         nextSelectedId && nextProjects.some((project) => project.id === nextSelectedId)
           ? nextSelectedId
@@ -250,18 +210,13 @@ export default function ProjectMapPage() {
     setDetailLoading(true);
     setError("");
     try {
-      const [nextAssets, nextFindings, nextRelevance, nextControls] = await Promise.all([
-        fetchProjectAssets(projectId),
-        fetchAdminSurfaceFindings(projectId),
-        fetchProjectRelevance(projectId),
-        fetchProjectControls(projectId, 100),
-      ]);
-      setAssets(nextAssets);
-      setFindings(nextFindings);
-      setRelevance(nextRelevance);
-      setControls(nextControls);
+      const detail = await fetchProjectDetail(projectId);
+      setAssets(detail.assets);
+      setFindings(detail.findings);
+      setRelevance(detail.relevance);
+      setControls(detail.controls);
       setExpandedFindings(new Set());
-      if (resetTab) setActiveTab(nextFindings.length > 0 ? "admin" : "assets");
+      if (resetTab) setActiveTab(detail.findings.length > 0 ? "admin" : "assets");
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Failed to load project detail.");
       setAssets([]);
@@ -475,7 +430,7 @@ export default function ProjectMapPage() {
       setShowAddAsset(false);
       setMessage("Asset added.");
       await loadProjectDetail(selectedProjectId, false);
-      void loadProjectStats(projects);
+      void refreshProjectList();
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Failed to add asset.");
     }
@@ -490,7 +445,7 @@ export default function ProjectMapPage() {
       const result = await scanAdminSurface(selectedProjectId);
       setMessage(`Admin surface scan completed: ${result.findingsCreated} findings.`);
       await loadProjectDetail(selectedProjectId);
-      void loadProjectStats(projects);
+      void refreshProjectList();
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Failed to scan admin surface.");
     } finally {

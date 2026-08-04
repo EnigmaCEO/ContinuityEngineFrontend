@@ -39,6 +39,7 @@ import type {
 import { fetchProjectAccountOverview } from "@/lib/project-map/service";
 import type { ProjectAccountOverview } from "@/lib/project-map/types";
 import { fetchAdminSummary } from "@/lib/saas/service";
+import { fetchPortalDashboardBootstrap } from "@/lib/dashboard/service";
 
 const GOLD = "#D4AF37";
 const PURPLE = "#2A1F4A";
@@ -363,6 +364,11 @@ export default function DashboardPage() {
     const controller = new AbortController();
 
     async function load() {
+      const isInitialLoad = !dashboardLoadedRef.current;
+      if (isInitialLoad) {
+        incidentsLoadedRef.current = true;
+        projectLoadedRef.current = true;
+      }
       if (dashboardLoadedRef.current) {
         setSummary((current) => ({ data: current.data, loading: true, error: false }));
         setMetrics((current) => ({ data: current.data, loading: true, error: false }));
@@ -372,7 +378,11 @@ export default function DashboardPage() {
         setCriticalIntel((current) => ({ data: current.data, loading: true, error: false }));
       }
       try {
-        const result = await fetchDashboardOverview(criticalWindow, controller.signal);
+        const bootstrap = isInitialLoad
+          ? await fetchPortalDashboardBootstrap(criticalWindow, controller.signal)
+          : null;
+        const result = bootstrap?.dashboard
+          ?? await fetchDashboardOverview(criticalWindow, controller.signal);
         if (cancelled) return;
         dashboardLoadedRef.current = true;
         setSummary({ data: result.summary, loading: false, error: false });
@@ -381,6 +391,18 @@ export default function DashboardPage() {
         setThreats({ data: result.threats, loading: false, error: false });
         setActivity({ data: result.activity, loading: false, error: false });
         setCriticalIntel({ data: result.criticalIntel, loading: false, error: false });
+        if (bootstrap) {
+          setIncidents({
+            data: bootstrap.incidents,
+            loading: false,
+            error: !bootstrap.incidents,
+          });
+          setProjectOverview({
+            data: bootstrap.projects,
+            loading: false,
+            error: !bootstrap.projects,
+          });
+        }
       } catch (error) {
         if (cancelled || (error instanceof DOMException && error.name === "AbortError")) return;
         setSummary({ data: null, loading: false, error: true });
@@ -389,6 +411,10 @@ export default function DashboardPage() {
         setThreats({ data: null, loading: false, error: true });
         setActivity({ data: null, loading: false, error: true });
         setCriticalIntel({ data: null, loading: false, error: true });
+        if (isInitialLoad) {
+          setIncidents({ data: null, loading: false, error: true });
+          setProjectOverview({ data: null, loading: false, error: true });
+        }
       }
     }
 
@@ -400,6 +426,7 @@ export default function DashboardPage() {
   }, [criticalWindow]);
 
   useEffect(() => {
+    if (incidentsLoadedRef.current) return;
     let cancelled = false;
     const controller = new AbortController();
 
@@ -426,6 +453,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    if (projectLoadedRef.current) return;
     let cancelled = false;
 
     async function loadProjectOverview() {

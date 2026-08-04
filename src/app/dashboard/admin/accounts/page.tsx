@@ -7,10 +7,7 @@ import {
   createAccount,
   createMembership,
   createUser,
-  fetchAccessRequests,
-  fetchAccounts,
-  fetchMemberships,
-  fetchUsers,
+  fetchAdminBootstrap,
   rejectAccessRequest,
   updateMembershipRole,
 } from "@/lib/saas/service";
@@ -47,16 +44,11 @@ export default function AdminAccountsPage() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [nextAccounts, nextUsers, nextMemberships, nextRequests] = await Promise.all([
-        fetchAccounts(),
-        fetchUsers(),
-        fetchMemberships(),
-        fetchAccessRequests(),
-      ]);
-      setAccounts(nextAccounts);
-      setUsers(nextUsers);
-      setMemberships(nextMemberships);
-      setRequests(nextRequests);
+      const bootstrap = await fetchAdminBootstrap();
+      setAccounts(bootstrap.accounts);
+      setUsers(bootstrap.users);
+      setMemberships(bootstrap.memberships);
+      setRequests(bootstrap.accessRequests);
     } finally {
       setLoading(false);
     }

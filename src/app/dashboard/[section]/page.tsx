@@ -19,26 +19,7 @@ import {
 import type { ReactNode } from "react";
 
 import {
-  fetchRadarBridgeCoverage,
-  fetchRadarClientEntitlementSummary,
-  fetchRadarClients,
-  fetchLatestRadarDailyBriefRecord,
-  fetchRadarAlerts,
-  fetchRadarDailyBrief,
-  fetchRadarDailyBriefSocialDeliveries,
-  fetchRadarDeliveryDestinations,
-  fetchRadarLiveDeliveries,
-  fetchRadarLiveObjectsStatus,
-  fetchRadarOracleActivationDiagnostics,
-  fetchRadarSignalQuality,
-  fetchRadarBridgeSignalQuality,
-  fetchRadarOracleCoverage,
-  fetchRadarLatestOraclePilotDrill,
-  fetchRadarOracleReadiness,
-  fetchRadarOracleCoverageSummary,
-  fetchRadarRuntimeStatus,
-  fetchRadarWatchlists,
-  fetchRadarWatchlistMatches,
+  fetchRadarDashboardBootstrap,
 } from "@/lib/radar/service";
 import { BridgeCoveragePanel } from "@/components/radar/BridgeCoveragePanel";
 import { BridgeSignalQualityPanel } from "@/components/radar/BridgeSignalQualityPanel";
@@ -276,24 +257,19 @@ export default async function SectionPage(
   let radarOraclePilotDrillError: string | null = null;
   let radarSignalQualityError: string | null = null;
 
-  async function settle<T>(loader: () => Promise<T>): Promise<PromiseSettledResult<T>> {
-    try {
-      return {
-        status: "fulfilled",
-        value: await loader(),
-      };
-    } catch (reason) {
-      return {
-        status: "rejected",
-        reason,
-      };
+  function bootstrapResult<T>(value: T, error?: string): PromiseSettledResult<T> {
+    if (error) {
+      return { status: "rejected", reason: new Error(error) };
     }
+    return { status: "fulfilled", value };
   }
 
   if (isRadarSection && radarMonitorType) {
-    const adminKey = process.env.SCE_ADMIN_API_KEY ?? process.env.SCE_DASHBOARD_ADMIN_API_KEY ?? "";
     const isOracle = section === "oracle-monitor";
     const isBridge = section === "bridge-monitor";
+    const bootstrap = await fetchRadarDashboardBootstrap(isOracle ? "oracle" : "bridge");
+    const bootstrapErrors = bootstrap.errors;
+    latestRadarSocialDelivery = bootstrap.latestSocialDelivery ?? null;
 
     const [
       alertsResult,
@@ -309,21 +285,21 @@ export default async function SectionPage(
       oraclePilotDrillResult,
       signalQualityResult,
       bridgeSignalQualityResult,
-    ] = await Promise.allSettled([
-      fetchRadarAlerts({ status: "active", monitorType: radarMonitorType, limit: 12 }),
-      fetchRadarRuntimeStatus(),
-      fetchRadarLiveObjectsStatus(),
-      fetchRadarDailyBrief(24),
-      fetchLatestRadarDailyBriefRecord(),
-      isOracle ? fetchRadarOracleActivationDiagnostics(adminKey) : Promise.resolve(null),
-      isOracle ? fetchRadarOracleCoverage(adminKey) : Promise.resolve([] as OracleCoverageItem[]),
-      isOracle ? fetchRadarOracleCoverageSummary(adminKey) : Promise.resolve(null),
-      isBridge ? fetchRadarBridgeCoverage(adminKey) : Promise.resolve(null),
-      isOracle ? fetchRadarOracleReadiness(adminKey) : Promise.resolve(null),
-      isOracle ? fetchRadarLatestOraclePilotDrill(adminKey) : Promise.resolve(null),
-      isOracle ? fetchRadarSignalQuality(adminKey) : Promise.resolve(null),
-      isBridge ? fetchRadarBridgeSignalQuality(adminKey) : Promise.resolve(null),
-    ]);
+    ] = [
+      bootstrapResult(bootstrap.alerts ?? [], bootstrapErrors.alerts ?? bootstrapErrors.bootstrap),
+      bootstrapResult(bootstrap.runtimeStatus ?? null, bootstrapErrors.runtimeStatus ?? bootstrapErrors.bootstrap),
+      bootstrapResult(bootstrap.liveObjectsStatus ?? null, bootstrapErrors.liveObjectsStatus ?? bootstrapErrors.bootstrap),
+      bootstrapResult(bootstrap.dailyBrief ?? null, bootstrapErrors.dailyBrief ?? bootstrapErrors.bootstrap),
+      bootstrapResult(bootstrap.latestBrief ?? null, bootstrapErrors.latestBrief ?? bootstrapErrors.bootstrap),
+      bootstrapResult(bootstrap.oracleDiagnostics ?? null, bootstrapErrors.oracleDiagnostics ?? bootstrapErrors.bootstrap),
+      bootstrapResult(bootstrap.oracleCoverage ?? [], bootstrapErrors.oracleCoverage ?? bootstrapErrors.bootstrap),
+      bootstrapResult(bootstrap.oracleCoverageSummary ?? null, bootstrapErrors.oracleCoverageSummary ?? bootstrapErrors.bootstrap),
+      bootstrapResult(bootstrap.bridgeCoverage ?? null, bootstrapErrors.bridgeCoverage ?? bootstrapErrors.bootstrap),
+      bootstrapResult(bootstrap.oracleReadiness ?? null, bootstrapErrors.oracleReadiness ?? bootstrapErrors.bootstrap),
+      bootstrapResult(bootstrap.oraclePilotDrill ?? null, bootstrapErrors.oraclePilotDrill ?? bootstrapErrors.bootstrap),
+      bootstrapResult(bootstrap.signalQuality ?? null, bootstrapErrors.signalQuality ?? bootstrapErrors.bootstrap),
+      bootstrapResult(bootstrap.bridgeSignalQuality ?? null, bootstrapErrors.bridgeSignalQuality ?? bootstrapErrors.bootstrap),
+    ] as const;
 
     if (alertsResult.status === "fulfilled") {
       radarAlerts = alertsResult.value;
@@ -421,29 +397,21 @@ export default async function SectionPage(
 
     if (latestBriefResult.status === "fulfilled") {
       latestRadarDailyBrief = latestBriefResult.value;
-      if (latestRadarDailyBrief) {
-        try {
-          const deliveries = await fetchRadarDailyBriefSocialDeliveries(latestRadarDailyBrief.id);
-          latestRadarSocialDelivery = deliveries[0] ?? null;
-        } catch (error) {
-          radarSocialError = error instanceof Error
-            ? error.message
-            : "Radar social delivery status is temporarily unavailable.";
-        }
-      }
+      radarSocialError = bootstrapErrors.latestSocialDelivery ?? null;
     }
   } else if (isUnifiedRadarMonitorSection) {
+    const bootstrap = await fetchRadarDashboardBootstrap("unified");
     const [
       oracleAlertsResult,
       bridgeAlertsResult,
       lpAlertsResult,
       runtimeStatusResult,
-    ] = await Promise.allSettled([
-      fetchRadarAlerts({ status: "active", monitorType: "oracle", limit: 8 }),
-      fetchRadarAlerts({ status: "active", monitorType: "bridge", limit: 8 }),
-      fetchRadarAlerts({ status: "active", monitorType: "lp", limit: 8 }),
-      fetchRadarRuntimeStatus(),
-    ]);
+    ] = [
+      bootstrapResult(bootstrap.oracleAlerts ?? [], bootstrap.errors.oracleAlerts ?? bootstrap.errors.alerts ?? bootstrap.errors.bootstrap),
+      bootstrapResult(bootstrap.bridgeAlerts ?? [], bootstrap.errors.bridgeAlerts ?? bootstrap.errors.alerts ?? bootstrap.errors.bootstrap),
+      bootstrapResult(bootstrap.lpAlerts ?? [], bootstrap.errors.lpAlerts ?? bootstrap.errors.alerts ?? bootstrap.errors.bootstrap),
+      bootstrapResult(bootstrap.runtimeStatus ?? null, bootstrap.errors.runtimeStatus ?? bootstrap.errors.bootstrap),
+    ] as const;
 
     if (oracleAlertsResult.status === "fulfilled") {
       radarOracleAlerts = oracleAlertsResult.value;
@@ -469,10 +437,8 @@ export default async function SectionPage(
       radarRuntimeError = runtimeStatusResult.reason instanceof Error ? runtimeStatusResult.reason.message : "Failed to load Radar runtime status.";
     }
   } else if (isLpMonitorSection) {
-    const adminKey = process.env.SCE_ADMIN_API_KEY ?? process.env.SCE_DASHBOARD_ADMIN_API_KEY ?? "";
-    const alertsResult = await settle(() =>
-      fetchRadarAlerts({ status: "active", monitorType: "lp", limit: 50 }),
-    );
+    const bootstrap = await fetchRadarDashboardBootstrap("lp");
+    const alertsResult = bootstrapResult(bootstrap.alerts ?? [], bootstrap.errors.alerts ?? bootstrap.errors.bootstrap);
     if (alertsResult.status === "fulfilled") {
       radarAlerts = alertsResult.value;
     } else {
@@ -480,26 +446,19 @@ export default async function SectionPage(
         ? alertsResult.reason.message
         : "LP alerts are temporarily unavailable.";
     }
-    void adminKey;
   } else if (isRadarServiceSection) {
-    const [clientsResult, watchlistsResult, matchesResult, destinationsResult, liveDeliveriesResult] = await Promise.allSettled([
-      fetchRadarClients(),
-      fetchRadarWatchlists(),
-      fetchRadarWatchlistMatches({ status: "pending_delivery", limit: 100 }),
-      fetchRadarDeliveryDestinations(),
-      fetchRadarLiveDeliveries({ limit: 100 }),
-    ]);
+    const bootstrap = await fetchRadarDashboardBootstrap("service");
+    const [clientsResult, watchlistsResult, matchesResult, destinationsResult, liveDeliveriesResult] = [
+      bootstrapResult(bootstrap.clients ?? [], bootstrap.errors.clients ?? bootstrap.errors.bootstrap),
+      bootstrapResult(bootstrap.watchlists ?? [], bootstrap.errors.watchlists ?? bootstrap.errors.bootstrap),
+      bootstrapResult(bootstrap.watchlistMatches ?? [], bootstrap.errors.watchlistMatches ?? bootstrap.errors.bootstrap),
+      bootstrapResult(bootstrap.deliveryDestinations ?? [], bootstrap.errors.deliveryDestinations ?? bootstrap.errors.bootstrap),
+      bootstrapResult(bootstrap.liveDeliveries ?? [], bootstrap.errors.liveDeliveries ?? bootstrap.errors.bootstrap),
+    ] as const;
 
     if (clientsResult.status === "fulfilled") {
       radarClients = clientsResult.value;
-      const latestClient = radarClients[0] ?? null;
-      if (latestClient) {
-        try {
-          radarEntitlementSummary = await fetchRadarClientEntitlementSummary(latestClient.id);
-        } catch {
-          radarEntitlementSummary = null;
-        }
-      }
+      radarEntitlementSummary = bootstrap.entitlementSummary ?? null;
     } else {
       radarError = clientsResult.reason instanceof Error
         ? clientsResult.reason.message

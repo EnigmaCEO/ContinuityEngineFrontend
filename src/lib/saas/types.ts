@@ -96,3 +96,10 @@ export interface AccessRequest {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface SaasAdminBootstrap {
+  accounts: Account[];
+  users: User[];
+  memberships: MembershipDetail[];
+  accessRequests: AccessRequest[];
+}

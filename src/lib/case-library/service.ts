@@ -6,6 +6,7 @@ import type {
   CaseLibraryTableResponse,
   CaseLibraryRecord,
   ArchiveFacetsResponse,
+  CaseLibraryPageBootstrapResponse,
   SourceSyncResult,
   SourceProviderStatus,
   BatchEnrichmentResult,
@@ -27,6 +28,7 @@ const API_BASE = '/api/backend';
 const USE_MOCK = false;
 let dashboardFetchCount = 0;
 const DASHBOARD_OVERVIEW_TTL_MS = 30_000;
+const PAGE_BOOTSTRAP_TTL_MS = 30_000;
 const INCIDENTS_OVERVIEW_TTL_MS = 15_000;
 const dashboardOverviewCache = new Map<
   '24h' | '7d' | '30d',
@@ -38,6 +40,12 @@ const dashboardOverviewRequests = new Map<
 >();
 let incidentsOverviewCache: { expiresAt: number; data: IncidentsOverviewResponse } | null = null;
 let incidentsOverviewRequest: Promise<IncidentsOverviewResponse> | null = null;
+let pageBootstrapCache: { expiresAt: number; data: CaseLibraryPageBootstrapResponse } | null = null;
+let pageBootstrapRequest: Promise<CaseLibraryPageBootstrapResponse> | null = null;
+
+function invalidatePageBootstrap(): void {
+  pageBootstrapCache = null;
+}
 
 function apiUrl(path: string): URL {
   return new URL(`${API_BASE}${path}`, window.location.origin);
@@ -201,6 +209,7 @@ export async function triggerSync(): Promise<SourceSyncResult | void> {
     }),
   });
   if (!res.ok) throw new Error(await errorMessage(res, 'Sync Sources failed'));
+  invalidatePageBootstrap();
   return res.json() as Promise<SourceSyncResult>;
 }
 
@@ -217,6 +226,7 @@ export async function ingestCase(payload?: unknown): Promise<void> {
     body: JSON.stringify(payload ?? {}),
   });
   if (!res.ok) throw new Error(`ingest failed: ${res.status}`);
+  invalidatePageBootstrap();
 }
 
 // ─── Doctrine enrichment ──────────────────────────────────────────────────────
@@ -226,7 +236,29 @@ export async function enrichDoctrine(caseId: string): Promise<CaseLibraryRecord>
     method: 'POST',
   });
   if (!res.ok) throw new Error(await errorMessage(res, 'Doctrine enrichment failed'));
+  invalidatePageBootstrap();
   return res.json() as Promise<CaseLibraryRecord>;
+}
+
+export async function fetchPageBootstrap(): Promise<CaseLibraryPageBootstrapResponse> {
+  if (pageBootstrapCache && pageBootstrapCache.expiresAt > Date.now()) {
+    return pageBootstrapCache.data;
+  }
+  if (!pageBootstrapRequest) {
+    pageBootstrapRequest = fetch(`${API_BASE}/case-library/page-bootstrap`, { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(await errorMessage(response, 'Case Library panels failed'));
+        return response.json() as Promise<CaseLibraryPageBootstrapResponse>;
+      })
+      .then((data) => {
+        pageBootstrapCache = { expiresAt: Date.now() + PAGE_BOOTSTRAP_TTL_MS, data };
+        return data;
+      })
+      .finally(() => {
+        pageBootstrapRequest = null;
+      });
+  }
+  return pageBootstrapRequest;
 }
 
 export async function batchEnrichDoctrine(limit = 50): Promise<BatchEnrichmentResult> {
@@ -234,6 +266,7 @@ export async function batchEnrichDoctrine(limit = 50): Promise<BatchEnrichmentRe
   url.searchParams.set('limit', String(limit));
   const res = await fetch(url.toString(), { method: 'POST' });
   if (!res.ok) throw new Error(`batch enrich-doctrine failed: ${res.status}`);
+  invalidatePageBootstrap();
   return res.json() as Promise<BatchEnrichmentResult>;
 }
 
@@ -244,6 +277,7 @@ export async function runReplay(caseId: string): Promise<CaseLibraryRecord> {
     method: 'POST',
   });
   if (!res.ok) throw new Error(await errorMessage(res, 'Validation failed'));
+  invalidatePageBootstrap();
   return res.json() as Promise<CaseLibraryRecord>;
 }
 
@@ -253,6 +287,7 @@ export async function batchRunReplay(limit = 50): Promise<BatchReplayResult> {
     method: 'POST',
   });
   if (!res.ok) throw new Error(await errorMessage(res, 'Batch validation failed'));
+  invalidatePageBootstrap();
   return res.json() as Promise<BatchReplayResult>;
 }
 
@@ -261,6 +296,7 @@ export async function refreshReplayEligibility(): Promise<EligibilityRefreshResu
     method: 'POST',
   });
   if (!res.ok) throw new Error(await errorMessage(res, 'Validation eligibility refresh failed'));
+  invalidatePageBootstrap();
   return res.json() as Promise<EligibilityRefreshResult>;
 }
 

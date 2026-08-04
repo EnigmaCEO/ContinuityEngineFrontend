@@ -10,6 +10,8 @@ import type {
   RadarClientEntitlementSummary,
   RadarDailyBrief,
   RadarDailyBriefRecord,
+  RadarDashboardBootstrap,
+  RadarDashboardView,
   RadarDeliveryDestination,
   RadarLiveDelivery,
   RadarLiveObjectsStatus,
@@ -22,6 +24,30 @@ import type {
 } from "@/lib/radar/types";
 
 const API_BASE = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+
+export async function fetchRadarDashboardBootstrap(
+  view: RadarDashboardView,
+): Promise<RadarDashboardBootstrap> {
+  try {
+    const url = new URL(`${API_BASE}/v1/sce/radar/dashboard/bootstrap`);
+    url.searchParams.set("view", view);
+    const headers: HeadersInit = {};
+    const adminKey = process.env.SCE_ADMIN_API_KEY ?? process.env.SCE_DASHBOARD_ADMIN_API_KEY;
+    if (adminKey) headers["X-SCE-Admin-Key"] = adminKey;
+    const response = await fetch(url.toString(), { cache: "no-store", headers });
+    if (!response.ok) {
+      throw new Error(`Radar dashboard bootstrap failed: ${response.status}`);
+    }
+    return response.json() as Promise<RadarDashboardBootstrap>;
+  } catch (error) {
+    return {
+      view,
+      errors: {
+        bootstrap: error instanceof Error ? error.message : "Radar dashboard bootstrap failed.",
+      },
+    };
+  }
+}
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

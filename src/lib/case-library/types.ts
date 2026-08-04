@@ -327,6 +327,14 @@ export interface ArchiveFacetsResponse {
   caseStatuses:     ArchiveFacetOption[];
 }
 
+export interface CaseLibraryPageBootstrapResponse {
+  summary:        CaseLibrarySummaryStats;
+  activity:       CaseLibraryActivityItem[];
+  metrics:        CaseLibraryMetrics;
+  providerStatus: SourceProviderStatus[];
+  facets:         ArchiveFacetsResponse;
+}
+
 export interface DoctrineReplayCoverageStat {
   tag:           string;
   replayPassed:  number;

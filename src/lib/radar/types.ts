@@ -1683,3 +1683,33 @@ export interface LpUniswapV3MonitorResult {
   poolResults: LpPoolCheckResult[];
   messages: string[];
 }
+
+export type RadarDashboardView = "oracle" | "bridge" | "unified" | "lp" | "service";
+
+export interface RadarDashboardBootstrap {
+  view: RadarDashboardView;
+  alerts?: RadarAlert[];
+  oracleAlerts?: RadarAlert[];
+  bridgeAlerts?: RadarAlert[];
+  lpAlerts?: RadarAlert[];
+  runtimeStatus?: RadarRuntimeStatus | null;
+  liveObjectsStatus?: RadarLiveObjectsStatus | null;
+  dailyBrief?: RadarDailyBrief | null;
+  latestBrief?: RadarDailyBriefRecord | null;
+  latestSocialDelivery?: RadarSocialDeliveryRecord | null;
+  oracleDiagnostics?: OracleActivationDiagnosticsResult | null;
+  oracleCoverage?: OracleCoverageItem[] | null;
+  oracleCoverageSummary?: OracleCoverageSummary | null;
+  oracleReadiness?: OracleReadinessReport | null;
+  oraclePilotDrill?: OraclePilotDrillReport | null;
+  signalQuality?: RadarSignalQualitySnapshot | null;
+  bridgeCoverage?: BridgeCoverageResponse | null;
+  bridgeSignalQuality?: RadarSignalQualitySnapshot | null;
+  clients?: RadarClient[];
+  entitlementSummary?: RadarClientEntitlementSummary | null;
+  watchlists?: RadarWatchlist[];
+  watchlistMatches?: RadarWatchlistMatch[];
+  deliveryDestinations?: RadarDeliveryDestination[];
+  liveDeliveries?: RadarLiveDelivery[];
+  errors: Record<string, string>;
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type {
   CaseLibrarySummaryStats,
   CaseLibraryActivityItem,
@@ -14,8 +14,7 @@ import type {
 } from "@/lib/case-library/types";
 import type { CaseLibraryTableSortKey } from "@/lib/case-library/types";
 import {
-  fetchSummaryStats, fetchCases, fetchActivity, fetchMetrics, fetchProviderStatus,
-  triggerSync, batchRunReplay, refreshReplayEligibility, fetchArchiveFacets,
+  fetchCases, fetchPageBootstrap, triggerSync, batchRunReplay, refreshReplayEligibility,
 } from "@/lib/case-library/service";
 import { CLR } from "@/lib/case-library/utils";
 import { CaseLibraryHeader }       from "@/components/case-library/CaseLibraryHeader";
@@ -207,31 +206,18 @@ export default function CaseLibraryPage() {
     setActivityLoading(true);
     setMetricsLoading(true);
     setFacetsLoading(true);
-    const [s, a, m, p, f] = await Promise.allSettled([
-      fetchSummaryStats(),
-      fetchActivity(),
-      fetchMetrics(),
-      fetchProviderStatus(),
-      fetchArchiveFacets(),
-    ]);
-
-    if (s.status === "fulfilled") setSummary(s.value);
-    else setError(s.reason?.message ?? "Failed to load summary data.");
-
-    if (a.status === "fulfilled") setActivity(a.value);
-    else setError(a.reason?.message ?? "Failed to load activity data.");
-
-    if (m.status === "fulfilled") setMetrics(m.value);
-    else setError(m.reason?.message ?? "Failed to load metrics data.");
-
-    if (p.status === "fulfilled") setProviderStatus(p.value);
-    // provider-status is best-effort — a failure is non-fatal.
-
-    if (f.status === "fulfilled") {
-      setFacets(f.value);
-    } else {
-      console.error("[Case Library] Archive facets fetch failed; current page options will be used as fallback.", f.reason);
+    try {
+      const data = await fetchPageBootstrap();
+      setSummary(data.summary);
+      setActivity(data.activity);
+      setMetrics(data.metrics);
+      setProviderStatus(data.providerStatus);
+      setFacets(data.facets);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Failed to load Case Library panels.");
     }
+
+    // provider-status is best-effort — a failure is non-fatal.
 
     setSummaryLoading(false);
     setActivityLoading(false);
@@ -337,9 +323,7 @@ export default function CaseLibraryPage() {
   }
 
   // ── Derived state ────────────────────────────────────────────────────────────
-  const effectiveFilters = useMemo<FilterState>(() => {
-    return filters;
-  }, [viewMode, filters]);
+  const effectiveFilters = filters;
   
   const hasAnyFilter = (
     !!effectiveFilters.search || !!effectiveFilters.severity || !!effectiveFilters.type ||

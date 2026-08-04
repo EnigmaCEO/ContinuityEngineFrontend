@@ -7,8 +7,10 @@ import type {
   ProjectControlGenerationResponse,
   ProjectControlStatus,
   ProjectControlVerificationResponse,
+  ProjectDetail,
   ProjectIntakeRequest,
   ProjectIntakeResponse,
+  ProjectMapBootstrap,
   ProjectRelevance,
   ProtocolMatrixIntakeRequest,
   ProtocolMatrixIntakeResponse,
@@ -64,8 +66,16 @@ export async function fetchProjects(limit = 50): Promise<Project[]> {
   return response.items;
 }
 
+export async function fetchProjectMapBootstrap(limit = 50): Promise<ProjectMapBootstrap> {
+  return api<ProjectMapBootstrap>(withLimit("/projects/bootstrap", limit), { cache: "no-store" });
+}
+
 export async function fetchProject(projectId: string): Promise<Project> {
   return api<Project>(`/projects/${projectId}`, { cache: "no-store" });
+}
+
+export async function fetchProjectDetail(projectId: string): Promise<ProjectDetail> {
+  return api<ProjectDetail>(`/projects/${projectId}/detail`, { cache: "no-store" });
 }
 
 export async function fetchProjectAccountOverview(): Promise<ProjectAccountOverview> {
