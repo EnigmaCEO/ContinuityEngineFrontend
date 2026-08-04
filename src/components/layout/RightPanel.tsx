@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bell, Settings } from "lucide-react";
-import { fetchIncidentsOverview } from "@/lib/case-library/service";
+import { fetchPortalDashboardBootstrap } from "@/lib/dashboard/service";
 import type { IncidentOverviewItem, IncidentsOverviewResponse } from "@/lib/case-library/types";
 import type { SaasMeResponse } from "@/lib/saas/types";
 
@@ -84,9 +84,9 @@ export function RightPanel({ me }: { me: SaasMeResponse }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetchIncidentsOverview()
+    fetchPortalDashboardBootstrap("7d")
       .then((data) => {
-        if (!cancelled) setIncidents(data);
+        if (!cancelled) setIncidents(data.incidents);
       })
       .catch(() => { /* non-critical, right rail degrades gracefully */ });
     return () => { cancelled = true; };

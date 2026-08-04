@@ -196,21 +196,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (pathname !== "/dashboard") return;
-    let cancelled = false;
-    void import("@/lib/case-library/service").then(({ fetchDashboardOverview, fetchIncidentsOverview }) => {
-      if (cancelled) return;
-      void Promise.allSettled([
-        fetchDashboardOverview("7d"),
-        fetchIncidentsOverview(),
-      ]);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [pathname]);
-
-  useEffect(() => {
     let cancelled = false;
     fetchMe()
       .then((result) => {

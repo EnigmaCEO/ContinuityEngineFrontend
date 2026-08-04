@@ -365,6 +365,7 @@ export default function DashboardPage() {
 
     async function load() {
       const isInitialLoad = !dashboardLoadedRef.current;
+      let bootstrapResolved = false;
       if (isInitialLoad) {
         incidentsLoadedRef.current = true;
         projectLoadedRef.current = true;
@@ -378,19 +379,12 @@ export default function DashboardPage() {
         setCriticalIntel((current) => ({ data: current.data, loading: true, error: false }));
       }
       try {
+        let result: Awaited<ReturnType<typeof fetchDashboardOverview>>;
         const bootstrap = isInitialLoad
           ? await fetchPortalDashboardBootstrap(criticalWindow, controller.signal)
           : null;
-        const result = bootstrap?.dashboard
-          ?? await fetchDashboardOverview(criticalWindow, controller.signal);
+        bootstrapResolved = Boolean(bootstrap);
         if (cancelled) return;
-        dashboardLoadedRef.current = true;
-        setSummary({ data: result.summary, loading: false, error: false });
-        setMetrics({ data: result.metrics, loading: false, error: false });
-        setDoctrine({ data: result.doctrine, loading: false, error: false });
-        setThreats({ data: result.threats, loading: false, error: false });
-        setActivity({ data: result.activity, loading: false, error: false });
-        setCriticalIntel({ data: result.criticalIntel, loading: false, error: false });
         if (bootstrap) {
           setIncidents({
             data: bootstrap.incidents,
@@ -402,7 +396,19 @@ export default function DashboardPage() {
             loading: false,
             error: !bootstrap.projects,
           });
+          if (!bootstrap.dashboard) throw new Error(bootstrap.errors.dashboard ?? "Dashboard data is unavailable.");
+          result = bootstrap.dashboard;
+        } else {
+          result = await fetchDashboardOverview(criticalWindow, controller.signal);
         }
+        if (cancelled) return;
+        dashboardLoadedRef.current = true;
+        setSummary({ data: result.summary, loading: false, error: false });
+        setMetrics({ data: result.metrics, loading: false, error: false });
+        setDoctrine({ data: result.doctrine, loading: false, error: false });
+        setThreats({ data: result.threats, loading: false, error: false });
+        setActivity({ data: result.activity, loading: false, error: false });
+        setCriticalIntel({ data: result.criticalIntel, loading: false, error: false });
       } catch (error) {
         if (cancelled || (error instanceof DOMException && error.name === "AbortError")) return;
         setSummary({ data: null, loading: false, error: true });
@@ -411,7 +417,7 @@ export default function DashboardPage() {
         setThreats({ data: null, loading: false, error: true });
         setActivity({ data: null, loading: false, error: true });
         setCriticalIntel({ data: null, loading: false, error: true });
-        if (isInitialLoad) {
+        if (isInitialLoad && !bootstrapResolved) {
           setIncidents({ data: null, loading: false, error: true });
           setProjectOverview({ data: null, loading: false, error: true });
         }
