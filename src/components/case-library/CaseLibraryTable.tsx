@@ -24,7 +24,13 @@ interface Props {
   onRowClick:   (c: CaseLibraryRecord) => void;
 }
 
-const COL_HEADERS: { key: CaseLibraryTableSortKey; label: string; width: number | 'auto' }[] = [
+const COL_HEADERS: {
+  key: CaseLibraryTableSortKey | 'publishedAt' | 'responseCoverage';
+  label: string;
+  width: number | 'auto';
+  /** Derived columns have no backing model field, so the server cannot sort them. */
+  sortable?: boolean;
+}[] = [
   { key: 'caseId',         label: 'Case ID',   width: 136 },
   { key: 'title',          label: 'Title',     width: 'auto' },
   { key: 'source',         label: 'Source',    width: 90  },
@@ -37,7 +43,17 @@ const COL_HEADERS: { key: CaseLibraryTableSortKey; label: string; width: number 
   { key: 'status',         label: 'Status',    width: 108 },
   { key: 'ingestedAt',     label: 'Ingested',  width: 96  },
   { key: 'updatedAt',      label: 'Updated',   width: 96  },
+  // Carried over from the Advisories page when it was folded in. `published` is
+  // when the SOURCE saw it, which is not when we ingested it — a distinction the
+  // Ingested column alone cannot make.
+  { key: 'publishedAt',    label: 'Published', width: 96, sortable: false },
+  { key: 'responseCoverage', label: 'Response', width: 132, sortable: false },
 ];
+
+/** When the source observed the advisory, falling back to our ingest time. */
+function publishedDiscovered(c: CaseLibraryRecord): string {
+  return c.sourceRefs?.find((ref) => ref.observedAt)?.observedAt ?? c.ingestedAt;
+}
 
 function SortIcon({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
   if (!active) return <ChevronsUpDown size={9} style={{ color: 'rgba(140,140,170,0.3)', flexShrink: 0 }} />;
@@ -55,6 +71,36 @@ function SkeletonRow({ idx }: { idx: number }) {
         </td>
       ))}
     </tr>
+  );
+}
+
+/**
+ * Response coverage as a verified state.
+ *
+ * The label comes from the server (`responseCoverageState`), which applies the
+ * three-part conjunction: actions exist and belong to a policy selected for this
+ * case, that policy is eligible for the case's class, and the actions are owned
+ * by a lane that exists in doctrine. Anything short of that renders as the reason
+ * rather than as green.
+ */
+function ResponseCoverageCell({ c }: { c: CaseLibraryRecord }) {
+  const state = c.responseCoverageState;
+  if (!state) return <span style={{ color: 'rgba(140,140,170,0.4)', fontSize: 10.5 }}>—</span>;
+
+  const covered = state === 'Response Coverage';
+  return (
+    <span
+      title={state}
+      style={{
+        fontSize: 9.5, color: covered ? '#10B981' : 'rgba(140,140,170,0.75)',
+        border: `1px solid ${covered ? 'rgba(16,185,129,0.32)' : 'rgba(140,140,170,0.22)'}`,
+        borderRadius: 4, padding: '2px 6px', display: 'inline-block',
+        maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap' as const,
+      }}
+    >
+      {state}
+    </span>
   );
 }
 
@@ -213,14 +259,15 @@ export function CaseLibraryTable({
           </colgroup>
           <thead>
             <tr style={{ borderBottom: `1px solid ${CLR.border}`, height: 31 }}>
-              {COL_HEADERS.map(({ key, label }) => {
-                const active = sortBy === key;
+              {COL_HEADERS.map(({ key, label, sortable }) => {
+                const canSort = sortable !== false;
+                const active = canSort && sortBy === key;
                 return (
                   <th
                     key={key}
-                    onClick={() => onSort(key)}
+                    onClick={canSort ? () => onSort(key as CaseLibraryTableSortKey) : undefined}
                     style={{
-                      padding: '0 10px', textAlign: 'left', cursor: 'pointer',
+                      padding: '0 10px', textAlign: 'left', cursor: canSort ? 'pointer' : 'default',
                       userSelect: 'none' as const, whiteSpace: 'nowrap' as const,
                       background: active ? 'rgba(212,175,55,0.04)' : 'transparent',
                       color: active ? CLR.gold : CLR.muted,
@@ -230,7 +277,7 @@ export function CaseLibraryTable({
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                       {label}
-                      <SortIcon active={active} dir={sortDir} />
+                      {canSort && <SortIcon active={active} dir={sortDir} />}
                     </div>
                   </th>
                 );
@@ -346,6 +393,14 @@ export function CaseLibraryTable({
                     {/* Updated */}
                     <td style={{ padding: '7px 10px' }}>
                       <DateCell iso={c.updatedAt} />
+                    </td>
+                    {/* Published / Discovered — when the source saw it */}
+                    <td style={{ padding: '7px 10px' }}>
+                      <DateCell iso={publishedDiscovered(c)} />
+                    </td>
+                    {/* Response coverage — a verified state, not "a rule fired" */}
+                    <td style={{ padding: '7px 10px' }}>
+                      <ResponseCoverageCell c={c} />
                     </td>
                   </tr>
                 ))

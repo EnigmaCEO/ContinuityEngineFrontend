@@ -2,7 +2,6 @@ import {
   Crosshair,
   BookOpen,
   Network,
-  AlertTriangle,
   Building2,
   FolderOpen,
   Cpu,
@@ -84,13 +83,6 @@ const sections: Record<
     description: "Structured threat classification and active incident severity mapping.",
     icon: Network,
     color: "#EF4444",
-    status: "In Development",
-  },
-  incidents: {
-    title: "Incidents",
-    description: "Full incident lifecycle management, triage queue, and resolution tracking.",
-    icon: AlertTriangle,
-    color: "#F97316",
     status: "In Development",
   },
   "case-library": {
@@ -177,8 +169,8 @@ const sections: Record<
     color: "#3B82F6",
     status: "In Development",
   },
-  "black-ops": {
-    title: "Black Ops",
+  "black-team": {
+    title: "Black Team",
     description: "Covert threat hunting, zero-day signal detection, and classified operation tracking.",
     icon: EyeOff,
     color: "#A855F7",

@@ -1,12 +1,12 @@
 import type {
   DashboardOverviewResponse,
-  IncidentsOverviewResponse,
+  AdvisoriesOverviewResponse,
 } from "@/lib/case-library/types";
 import type { ProjectAccountOverview } from "@/lib/project-map/types";
 
 export interface PortalDashboardBootstrap {
   dashboard: DashboardOverviewResponse | null;
-  incidents: IncidentsOverviewResponse | null;
+  advisories: AdvisoriesOverviewResponse | null;
   projects: ProjectAccountOverview | null;
   errors: Record<string, string>;
 }

@@ -60,7 +60,7 @@ export function CaseLibraryHeader({ stats, syncing, canManageSources, onSync, on
               </span>
             </div>
             <p style={{ margin: 0, fontSize: 11.5, color: CLR.muted, lineHeight: 1.5, maxWidth: 560 }}>
-              Global archive of incidents, CVEs, advisories, and validation-ready continuity intelligence.
+              Global archive of advisories, CVEs, and validation-ready continuity intelligence.
             </p>
           </div>
         </div>

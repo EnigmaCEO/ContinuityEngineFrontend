@@ -166,11 +166,13 @@ export function CaseLibrarySummaryCards({ stats, loading }: Props) {
           spark={INGEST_DATA} sparkColor={CLR.green} loading={loading}
         />
         <KpiCard
-          label="New CVEs Added"
+          /* The sub-label used to read "Last 24h" while the figure was a 7-day
+             count, and carried a hardcoded "+4 vs yesterday" delta that was not
+             computed from anything. The window now comes from the payload, and
+             the invented delta is gone. */
+          label="New CVEs"
           value={loading ? '—' : String(stats?.newCvesAdded ?? 0)}
-          sub="Last 24h · 3 sources active"
-          delta="+4 vs yesterday"
-          deltaUp={true}
+          sub={`Distinct CVE ids · last ${stats?.newCvesWindowDays ?? 7}d`}
           spark={CVE_DATA} sparkColor={CLR.blue} loading={loading}
         />
         <KpiCard

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Database, Layers, AlertTriangle, Zap, BookOpen, ChevronDown, ChevronRight } from 'lucide-react';
-import type { CaseLibraryMetrics, SourceProviderStatus } from '@/lib/case-library/types';
+import type { CaseLibraryMetrics, CorpusReconciliation, SourceProviderStatus } from '@/lib/case-library/types';
 import { CLR, CARD_STYLE, severityColor, formatRelative } from '@/lib/case-library/utils';
 
 interface Props {
   metrics:        CaseLibraryMetrics | null;
   loading:        boolean;
   providerStatus?: SourceProviderStatus[];
+  corpusReconciliation?: CorpusReconciliation | null;
   onViewProviders?: () => void;
 }
 
@@ -101,7 +102,14 @@ function IngestionPanel({ stats, loading }: { stats: CaseLibraryMetrics['ingesti
             <MetricRow label="Raw Ingests Today"   value={stats.rawIngestsToday}              color={CLR.blue}   />
             <MetricRow label="Normalized Today"    value={stats.normalizedToday}              color={CLR.green}  />
             <MetricRow label="Failed Ingestions"   value={stats.failedIngestions}             color={CLR.red}    />
-            <MetricRow label="Pending Review"      value={stats.pendingReview}                color={CLR.orange} />
+            <MetricRow label="Pending Review"      value={stats.pendingReview}                color={stats.reviewQueueUnconsumed ? CLR.muted : CLR.orange} />
+            {stats.reviewQueueUnconsumed && stats.reviewQueueSeamNote && (
+              /* A 0 here looks like "nothing to do". It is a computed queue with
+                 no consumer — the seam where White Team attaches. */
+              <div style={{ fontSize: 10, color: CLR.muted, lineHeight: 1.5, paddingLeft: 2, marginTop: -4 }}>
+                {stats.reviewQueueSeamNote}
+              </div>
+            )}
             <MetricRow label="Avg Process Time"    value={`${stats.avgProcessTimeSec}s`}      color={CLR.muted}  />
             <MetricRow label="Last Sync"           value={formatRelative(stats.lastSyncAt)}   color={CLR.green}  />
           </div>
@@ -252,9 +260,10 @@ function ProviderDrilldown({ p, srcColor }: { p: SourceProviderStatus; srcColor:
 }
 
 function ProviderHealthPanel({
-  providerStatus, lastSyncAt, loading, onViewProviders,
+  providerStatus, corpusReconciliation, lastSyncAt, loading, onViewProviders,
 }: {
   providerStatus?: SourceProviderStatus[];
+  corpusReconciliation?: CorpusReconciliation | null;
   lastSyncAt?: string;
   loading: boolean;
   onViewProviders?: () => void;
@@ -275,7 +284,7 @@ function ProviderHealthPanel({
     { label: 'Enrichers', value: providers.filter((p) => p.roles.includes('enriches')).length, color: '#10B981' },
     { label: 'Package Intel', value: providers.filter((p) => p.tags.includes('package_intelligence')).length, color: '#6366F1' },
     { label: 'Exploit Signals', value: providers.filter((p) => p.tags.includes('public_exploit_signal') || p.tags.includes('exploit_pressure') || p.source === 'Exploit-DB').length, color: '#DC2626' },
-    { label: 'Incident Sources', value: providers.filter((p) => p.tags.includes('incident_source')).length, color: '#F59E0B' },
+    { label: 'Advisory Sources', value: providers.filter((p) => p.tags.includes('incident_source')).length, color: '#F59E0B' },
   ];
 
   return (
@@ -291,6 +300,16 @@ function ProviderHealthPanel({
                 <div style={{ fontSize: 9.5, color: CLR.muted, marginTop: 3 }}>
                   {active} active · {warnings} warnings · {errors} errors · {disabled} disabled
                 </div>
+                {corpusReconciliation && corpusReconciliation.deduplicated > 0 && (
+                  /* Provider contributions exceed the corpus because an advisory
+                     confirmed by several providers is one case. Without the dedup
+                     figure the two totals simply look contradictory. */
+                  <div style={{ fontSize: 9.5, color: CLR.muted, marginTop: 6, lineHeight: 1.5 }}>
+                    {corpusReconciliation.providerContributions.toLocaleString()} contributions →{' '}
+                    {corpusReconciliation.corpusTotal.toLocaleString()} cases ·{' '}
+                    <span style={{ color: CLR.green }}>{corpusReconciliation.deduplicated.toLocaleString()} deduplicated</span>
+                  </div>
+                )}
                 <div style={{ fontSize: 9, color: CLR.muted, marginTop: 3 }}>
                   {total} registered{syncTime ? ` · last sync ${formatRelative(syncTime)}` : ''}
                 </div>

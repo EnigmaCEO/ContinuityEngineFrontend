@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bell, Settings } from "lucide-react";
 import { fetchPortalDashboardBootstrap } from "@/lib/dashboard/service";
-import type { IncidentOverviewItem, IncidentsOverviewResponse } from "@/lib/case-library/types";
+import type { AdvisoryOverviewItem, AdvisoriesOverviewResponse } from "@/lib/case-library/types";
 import type { SaasMeResponse } from "@/lib/saas/types";
 
 const alerts = [
@@ -65,14 +65,14 @@ const S = {
   } as React.CSSProperties,
 };
 
-function incidentSeverityColor(severity: string | null | undefined): string {
+function advisorySeverityColor(severity: string | null | undefined): string {
   if (severity === "critical") return "#EF4444";
   if (severity === "high") return "#F97316";
   if (severity === "medium") return "#D4AF37";
   return "#22C55E";
 }
 
-function formatIncidentTime(value: string | null | undefined): string {
+function formatAdvisoryTime(value: string | null | undefined): string {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -80,19 +80,19 @@ function formatIncidentTime(value: string | null | undefined): string {
 }
 
 export function RightPanel({ me }: { me: SaasMeResponse }) {
-  const [incidents, setIncidents] = useState<IncidentsOverviewResponse | null>(null);
+  const [advisories, setAdvisories] = useState<AdvisoriesOverviewResponse | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetchPortalDashboardBootstrap("7d")
       .then((data) => {
-        if (!cancelled) setIncidents(data.incidents);
+        if (!cancelled) setAdvisories(data.advisories);
       })
       .catch(() => { /* non-critical, right rail degrades gracefully */ });
     return () => { cancelled = true; };
   }, []);
 
-  const recentIncidents: IncidentOverviewItem[] = incidents?.recent_incidents?.slice(0, 5) ?? [];
+  const recentAdvisories: AdvisoryOverviewItem[] = advisories?.recent_advisories?.slice(0, 5) ?? [];
 
   const initials = me.user.name
     .split(/\s+/)
@@ -298,7 +298,7 @@ export function RightPanel({ me }: { me: SaasMeResponse }) {
         </div>
       </div>
 
-      {/* Incident Timeline — live recent incidents, max 5 */}
+      {/* Advisory Timeline — live recent advisories, max 5 */}
       <div
         style={{
           padding: "13px 16px",
@@ -314,13 +314,13 @@ export function RightPanel({ me }: { me: SaasMeResponse }) {
           }}
         >
           <span style={S.sectionTitle}>INCIDENT TIMELINE</span>
-          <Link href="/dashboard/incidents" prefetch={false} style={S.viewAll}>VIEW ALL</Link>
+          <Link href="/dashboard/case-library" prefetch={false} style={S.viewAll}>VIEW ALL</Link>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          {recentIncidents.length > 0 ? recentIncidents.map((item, i) => (
+          {recentAdvisories.length > 0 ? recentAdvisories.map((item, i) => (
             <Link
               key={item.id}
-              href={`/dashboard/incidents/${encodeURIComponent(item.id)}`}
+              href={`/dashboard/case-library?case=${encodeURIComponent(item.id)}`}
               prefetch={false}
               style={{ textDecoration: "none" }}
             >
@@ -332,7 +332,7 @@ export function RightPanel({ me }: { me: SaasMeResponse }) {
                   position: "relative",
                 }}
               >
-                {i < recentIncidents.length - 1 && (
+                {i < recentAdvisories.length - 1 && (
                   <div
                     style={{
                       position: "absolute",
@@ -355,17 +355,17 @@ export function RightPanel({ me }: { me: SaasMeResponse }) {
                     paddingTop: 1,
                   }}
                 >
-                  {formatIncidentTime(item.published_discovered_date)}
+                  {formatAdvisoryTime(item.published_discovered_date)}
                 </span>
                 <div
                   style={{
                     width: 9,
                     height: 9,
                     borderRadius: "50%",
-                    background: incidentSeverityColor(item.severity),
+                    background: advisorySeverityColor(item.severity),
                     flexShrink: 0,
                     marginTop: 2,
-                    boxShadow: `0 0 5px ${incidentSeverityColor(item.severity)}60`,
+                    boxShadow: `0 0 5px ${advisorySeverityColor(item.severity)}60`,
                   }}
                 />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -389,12 +389,12 @@ export function RightPanel({ me }: { me: SaasMeResponse }) {
             </Link>
           )) : (
             <div style={{ fontSize: 10, color: "rgba(140,140,170,0.55)", paddingBottom: 8 }}>
-              No recent incidents.
+              No recent advisories.
             </div>
           )}
         </div>
         <Link
-          href="/dashboard/incidents"
+          href="/dashboard/case-library"
           prefetch={false}
           style={{
             display: "block",

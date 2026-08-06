@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import type {
   CaseLibrarySummaryStats,
   CaseLibraryActivityItem,
@@ -8,13 +9,14 @@ import type {
   CaseLibraryRecord,
   ArchiveFacetOption,
   ArchiveFacetsResponse,
+  CorpusReconciliation,
   SourceProviderStatus,
   BatchReplayResult,
   EligibilityRefreshResult,
 } from "@/lib/case-library/types";
 import type { CaseLibraryTableSortKey } from "@/lib/case-library/types";
 import {
-  fetchCases, fetchPageBootstrap, triggerSync, batchRunReplay, refreshReplayEligibility,
+  fetchCase, fetchCases, fetchPageBootstrap, triggerSync, batchRunReplay, refreshReplayEligibility,
 } from "@/lib/case-library/service";
 import { CLR } from "@/lib/case-library/utils";
 import { CaseLibraryHeader }       from "@/components/case-library/CaseLibraryHeader";
@@ -161,8 +163,16 @@ export default function CaseLibraryPage() {
   const [activity,       setActivity]       = useState<CaseLibraryActivityItem[]>([]);
   const [metrics,        setMetrics]        = useState<CaseLibraryMetrics | null>(null);
   const [providerStatus, setProviderStatus] = useState<SourceProviderStatus[]>([]);
+  const [corpusReconciliation, setCorpusReconciliation] = useState<CorpusReconciliation | null>(null);
   const [facets,         setFacets]         = useState<ArchiveFacetsResponse | null>(null);
   const [selectedCase,   setSelectedCase]   = useState<CaseLibraryRecord | null>(null);
+
+  // Deep link: /dashboard/case-library?case=CASE-2026-0804-0138 opens that case.
+  // Added when the separate Advisories page was folded in — the ticker and right
+  // panel linked to per-case detail routes, and those links must keep working
+  // rather than dumping the reader on an unfiltered list.
+  const searchParams = useSearchParams();
+  const deepLinkCaseId = searchParams.get("case");
 
   // ── Loading / error state ───────────────────────────────────────────────────
   const [summaryLoading,  setSummaryLoading]  = useState(true);
@@ -212,6 +222,7 @@ export default function CaseLibraryPage() {
       setActivity(data.activity);
       setMetrics(data.metrics);
       setProviderStatus(data.providerStatus);
+      setCorpusReconciliation(data.corpusReconciliation ?? null);
       setFacets(data.facets);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load Case Library panels.");
@@ -226,6 +237,16 @@ export default function CaseLibraryPage() {
   }, []);
 
   useEffect(() => { selectedCaseRef.current = selectedCase; }, [selectedCase]);
+
+  useEffect(() => {
+    if (!deepLinkCaseId) return;
+    if (selectedCaseRef.current?.caseId === deepLinkCaseId) return;
+    let cancelled = false;
+    fetchCase(deepLinkCaseId)
+      .then((record) => { if (!cancelled) setSelectedCase(record); })
+      .catch(() => { /* a bad id should not break the page */ });
+    return () => { cancelled = true; };
+  }, [deepLinkCaseId]);
   useEffect(() => {
     void Promise.resolve().then(() => loadMeta());
   }, [loadMeta]);
@@ -469,6 +490,7 @@ export default function CaseLibraryPage() {
             metrics={metrics}
             loading={metricsLoading}
             providerStatus={providerStatus}
+            corpusReconciliation={corpusReconciliation}
             onViewProviders={() => handleViewModeChange("providers")}
           />
           <CaseLibraryActivityFeed items={activity} loading={activityLoading} />

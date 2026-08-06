@@ -233,12 +233,47 @@ export default function DoctrineEnginePage() {
 
             <DetailBlock title="Top Recommended Actions" items={selected.recommendedActions} empty="No actions recorded." />
             <DetailBlock title="Continuity Implications" items={selected.continuityImplications} empty="No continuity implications recorded." />
+            {/* A condition spans threat families, so its case count will not match
+                any single family's — Admin Key / Access Control showed 274 while
+                the tag showed 297, with nothing on screen explaining the 23. The
+                composition below decomposes this row's count by contributing
+                provider so the difference is inspectable rather than puzzling. */}
+            {selected.sourceBreakdown && selected.sourceBreakdown.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ color: CLR.gold, fontSize: 10, textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 6 }}>
+                  Source Composition
+                </div>
+                {selected.sourceConcentrated && selected.concentrationNote && (
+                  <div style={{ fontSize: 11, color: CLR.orange, lineHeight: 1.5, marginBottom: 8 }}>
+                    {selected.concentrationNote}
+                  </div>
+                )}
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  {selected.sourceBreakdown.map((entry) => (
+                    <div key={entry.source} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: CLR.text }}>
+                      <span>{entry.source}</span>
+                      <span style={{ color: CLR.muted }}>{entry.count} · {entry.sharePct}%</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 10, color: CLR.muted, marginTop: 8, lineHeight: 1.5 }}>
+                  A condition can span several threat families, so this count is not
+                  expected to equal any one family&rsquo;s total.
+                </div>
+              </div>
+            )}
+
             <DetailBlock
               title={`Related Case IDs (${selected.relatedCaseIds.length} of ${selected.relatedCaseCount})`}
               items={selected.relatedCaseIds}
               empty="No related cases."
               mono
             />
+            <div style={{ fontSize: 10, color: CLR.muted, marginTop: -6, marginBottom: 12, lineHeight: 1.5 }}>
+              Ranked by match strength, then validation outcome, then priority — not
+              by case id.
+              {selected.newestCaseAt && ` Newest case ${formatTs(selected.newestCaseAt)}.`}
+            </div>
 
             <div style={{ marginTop: 16, padding: "12px 14px", borderRadius: 8, border: `1px solid ${CLR.border}`, background: "rgba(255,255,255,0.02)" }}>
               <div style={{ color: CLR.gold, fontSize: 10, textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 6 }}>Validation Gap Summary</div>

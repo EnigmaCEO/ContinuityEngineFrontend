@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify:vocab": "node scripts/check-vocabulary.mjs"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.5.1",

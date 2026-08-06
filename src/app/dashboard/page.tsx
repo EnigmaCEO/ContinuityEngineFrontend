@@ -24,7 +24,7 @@ import {
 import { useSession } from "@/components/layout/SessionContext";
 import {
   fetchDashboardOverview,
-  fetchIncidentsOverview,
+  fetchAdvisoriesOverview,
 } from "@/lib/case-library/service";
 import type {
   CaseLibraryActivityItem,
@@ -33,7 +33,7 @@ import type {
   DashboardCriticalCase,
   DashboardCriticalIntelligence,
   DoctrineOverviewResponse,
-  IncidentsOverviewResponse,
+  AdvisoriesOverviewResponse,
   ThreatMatrixOverviewResponse,
 } from "@/lib/case-library/types";
 import { fetchProjectAccountOverview } from "@/lib/project-map/service";
@@ -174,7 +174,7 @@ function compareRecentCases(a: DashboardCriticalCase, b: DashboardCriticalCase):
   return new Date(caseTimestamp(b) ?? 0).getTime() - new Date(caseTimestamp(a) ?? 0).getTime();
 }
 
-function formatIncidentDate(value: string | null | undefined): string | null {
+function formatAdvisoryDate(value: string | null | undefined): string | null {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
@@ -185,16 +185,16 @@ function formatIncidentDate(value: string | null | undefined): string | null {
   });
 }
 
-function incidentSeverityColor(severity: string | null | undefined): string {
+function advisorySeverityColor(severity: string | null | undefined): string {
   if (severity === "critical") return "#EF4444";
   if (severity === "high") return "#F97316";
   if (severity === "medium") return GOLD;
   return "#22C55E";
 }
 
-function coveragePendingCount(data: IncidentsOverviewResponse | null): number | null {
+function coveragePendingCount(data: AdvisoriesOverviewResponse | null): number | null {
   if (!data) return null;
-  return Math.max(0, data.total_incidents - data.incidents_with_response_coverage);
+  return Math.max(0, data.total_advisories - data.advisories_with_response_coverage);
 }
 
 function isOperatorRole(role: string | null | undefined): boolean {
@@ -339,7 +339,7 @@ export default function DashboardPage() {
   const renderCountRef = useRef(0);
   const dashboardLoadedRef = useRef(false);
   const projectLoadedRef = useRef(false);
-  const incidentsLoadedRef = useRef(false);
+  const advisoriesLoadedRef = useRef(false);
   const [criticalWindow, setCriticalWindow] = useState<"24h" | "7d" | "30d">("7d");
 
   const [summary, setSummary] = useState<Loadable<CaseLibrarySummaryStats>>(loadable());
@@ -348,7 +348,7 @@ export default function DashboardPage() {
   const [threats, setThreats] = useState<Loadable<ThreatMatrixOverviewResponse>>(loadable());
   const [activity, setActivity] = useState<Loadable<CaseLibraryActivityItem[]>>(loadable());
   const [criticalIntel, setCriticalIntel] = useState<Loadable<DashboardCriticalIntelligence>>(loadable());
-  const [incidents, setIncidents] = useState<Loadable<IncidentsOverviewResponse>>(loadable());
+  const [advisories, setAdvisories] = useState<Loadable<AdvisoriesOverviewResponse>>(loadable());
   const [projectOverview, setProjectOverview] = useState<Loadable<ProjectAccountOverview>>(loadable());
   const [adminCounts, setAdminCounts] = useState<Loadable<AdminCounts>>({
     data: null,
@@ -367,7 +367,7 @@ export default function DashboardPage() {
       const isInitialLoad = !dashboardLoadedRef.current;
       let bootstrapResolved = false;
       if (isInitialLoad) {
-        incidentsLoadedRef.current = true;
+        advisoriesLoadedRef.current = true;
         projectLoadedRef.current = true;
       }
       if (dashboardLoadedRef.current) {
@@ -386,10 +386,10 @@ export default function DashboardPage() {
         bootstrapResolved = Boolean(bootstrap);
         if (cancelled) return;
         if (bootstrap) {
-          setIncidents({
-            data: bootstrap.incidents,
+          setAdvisories({
+            data: bootstrap.advisories,
             loading: false,
-            error: !bootstrap.incidents,
+            error: !bootstrap.advisories,
           });
           setProjectOverview({
             data: bootstrap.projects,
@@ -418,7 +418,7 @@ export default function DashboardPage() {
         setActivity({ data: null, loading: false, error: true });
         setCriticalIntel({ data: null, loading: false, error: true });
         if (isInitialLoad && !bootstrapResolved) {
-          setIncidents({ data: null, loading: false, error: true });
+          setAdvisories({ data: null, loading: false, error: true });
           setProjectOverview({ data: null, loading: false, error: true });
         }
       }
@@ -432,26 +432,26 @@ export default function DashboardPage() {
   }, [criticalWindow]);
 
   useEffect(() => {
-    if (incidentsLoadedRef.current) return;
+    if (advisoriesLoadedRef.current) return;
     let cancelled = false;
     const controller = new AbortController();
 
-    async function loadIncidentsOverview() {
-      if (incidentsLoadedRef.current) {
-        setIncidents((current) => ({ data: current.data, loading: true, error: false }));
+    async function loadAdvisoriesOverview() {
+      if (advisoriesLoadedRef.current) {
+        setAdvisories((current) => ({ data: current.data, loading: true, error: false }));
       }
       try {
-        const overview = await fetchIncidentsOverview(controller.signal);
+        const overview = await fetchAdvisoriesOverview(controller.signal);
         if (cancelled) return;
-        incidentsLoadedRef.current = true;
-        setIncidents({ data: overview, loading: false, error: false });
+        advisoriesLoadedRef.current = true;
+        setAdvisories({ data: overview, loading: false, error: false });
       } catch (error) {
         if (cancelled || (error instanceof DOMException && error.name === "AbortError")) return;
-        setIncidents({ data: null, loading: false, error: true });
+        setAdvisories({ data: null, loading: false, error: true });
       }
     }
 
-    void loadIncidentsOverview();
+    void loadAdvisoriesOverview();
     return () => {
       cancelled = true;
       controller.abort();
@@ -510,14 +510,14 @@ export default function DashboardPage() {
   }, [isOperator]);
 
   const portalSignals = useMemo(() => {
-    const signals = [summary, metrics, doctrine, threats, activity, incidents];
+    const signals = [summary, metrics, doctrine, threats, activity, advisories];
     const online = signals.filter((item) => item.data && !item.error).length;
     return {
       online,
       total: signals.length,
       reachable: online > 0,
     };
-  }, [summary, metrics, doctrine, threats, activity, incidents]);
+  }, [summary, metrics, doctrine, threats, activity, advisories]);
 
   const recentActivity = useMemo(() => {
     const rows = activity.data ?? [];
@@ -587,8 +587,8 @@ export default function DashboardPage() {
   const doctrineRows = doctrine.data?.rows ?? [];
   const topDoctrineTags = doctrineRows.slice(0, 3);
   const topThreatFamily = threats.data?.rows?.[0];
-  const incidentData = incidents.data;
-  const incidentCoveragePending = coveragePendingCount(incidentData);
+  const advisoryData = advisories.data;
+  const advisoryCoveragePending = coveragePendingCount(advisoryData);
   const criticalSpark = [
     criticalIntel.data?.criticalCount ?? 0,
     criticalIntel.data?.highCount ?? 0,
@@ -941,14 +941,14 @@ export default function DashboardPage() {
         </div>
 
         <div style={CARD}>
-          <SectionHead icon={AlertTriangle} title="Incidents" action="OPEN INCIDENTS" href="/dashboard/incidents" />
-          <LoadingOrUnavailable loading={incidents.loading} error={incidents.error} />
-          {!incidents.loading && incidents.error ? (
+          <SectionHead icon={AlertTriangle} title="Advisories" action="OPEN CASE LIBRARY" href="/dashboard/case-library" />
+          <LoadingOrUnavailable loading={advisories.loading} error={advisories.error} />
+          {!advisories.loading && advisories.error ? (
             <div style={{ fontSize: 10.5, color: MUTED }}>
-              Incidents overview unavailable.
+              Advisories overview unavailable.
             </div>
           ) : null}
-          {!incidents.loading && !incidents.error && incidentData ? (
+          {!advisories.loading && !advisories.error && advisoryData ? (
             <div style={{ display: "grid", gap: 8 }}>
               <div
                 style={{
@@ -958,11 +958,11 @@ export default function DashboardPage() {
                 }}
               >
                 {[
-                  { label: "TOTAL INCIDENTS", value: incidentData.total_incidents, color: TEXT },
-                  { label: "CRITICAL", value: incidentData.critical_incidents, color: "#EF4444" },
-                  { label: "AWAITING VALIDATION", value: incidentData.incidents_awaiting_replay, color: GOLD },
-                  { label: "CASE INDEXED", value: incidentData.replay_validated_incidents, color: "#22C55E" },
-                  { label: "RESPONSE COVERAGE", value: incidentData.incidents_with_response_coverage, color: "#3B82F6" },
+                  { label: "TOTAL ADVISORIES", value: advisoryData.total_advisories, color: TEXT },
+                  { label: "CRITICAL", value: advisoryData.critical_advisories, color: "#EF4444" },
+                  { label: "AWAITING VALIDATION", value: advisoryData.advisories_awaiting_validation, color: GOLD },
+                  { label: "CASE INDEXED", value: advisoryData.validation_passed_advisories, color: "#22C55E" },
+                  { label: "RESPONSE COVERAGE", value: advisoryData.advisories_with_response_coverage, color: "#3B82F6" },
                 ].map((item) => (
                   <div
                     key={item.label}
@@ -983,10 +983,10 @@ export default function DashboardPage() {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 2 }}>
                 <span style={{ fontSize: 8.5, color: MUTED }}>
-                  Coverage Pending: <span style={{ color: "#F97316", fontWeight: 700 }}>{formatCount(incidentCoveragePending)}</span>
+                  Coverage Pending: <span style={{ color: "#F97316", fontWeight: 700 }}>{formatCount(advisoryCoveragePending)}</span>
                 </span>
-                <Link href="/dashboard/incidents" prefetch={false} style={{ fontSize: 8.5, color: "rgba(212,175,55,0.72)", letterSpacing: "0.08em", textDecoration: "none" }}>
-                  OPEN INCIDENTS →
+                <Link href="/dashboard/case-library" prefetch={false} style={{ fontSize: 8.5, color: "rgba(212,175,55,0.72)", letterSpacing: "0.08em", textDecoration: "none" }}>
+                  OPEN ADVISORIES →
                 </Link>
               </div>
             </div>
@@ -1287,7 +1287,7 @@ export default function DashboardPage() {
                     sub: "Defensive posture",
                   },
                   {
-                    key: "BLACK OPS",
+                    key: "BLACK TEAM",
                     icon: EyeOff,
                     color: "#A855F7",
                     accent: "rgba(10,8,25,0.9)",

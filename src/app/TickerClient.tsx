@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchIncidentsOverview } from "@/lib/case-library/service";
-import type { IncidentOverviewItem } from "@/lib/case-library/types";
+import { fetchAdvisoriesOverview } from "@/lib/case-library/service";
+import type { AdvisoryOverviewItem } from "@/lib/case-library/types";
 
 const FALLBACK: string[] = [
   "Critical incident feed temporarily unavailable",
@@ -17,7 +17,7 @@ function truncate(s: string, max: number): string {
   return s.length > max ? s.slice(0, max).trimEnd() + "…" : s;
 }
 
-function formatTickerItem(item: IncidentOverviewItem): string {
+function formatTickerItem(item: AdvisoryOverviewItem): string {
   return `${truncate(item.title, TITLE_MAX)} — via ${item.source}`;
 }
 
@@ -26,7 +26,7 @@ export default function TickerClient() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchIncidentsOverview(controller.signal)
+    fetchAdvisoriesOverview(controller.signal)
       .then((data) => {
         const ticker = data.critical_ticker_items;
         if (ticker && ticker.length > 0) {

@@ -84,6 +84,10 @@ export interface CaseLibraryRecord {
   status:         CaseStatus;
   replayStatus:   ReplayStatus;
   doctrineStatus: DoctrineStatus;
+  /** Verified response state, or the reason there isn't one. Computed server-side
+   *  so no surface re-derives the conjunction — re-deriving it is how the two
+   *  renderings drifted apart. */
+  responseCoverageState?: string;
   cveCount:       number;
   cveRefs?:       string[];
   ingestedAt:     string;
@@ -154,6 +158,9 @@ export interface CaseLibrarySummaryStats {
   activeRecords:            number;
   activeRecordsDelta:       number;
   newCvesAdded:             number;
+  /** Window the newCvesAdded figure covers. Ships with the number because it is
+   *  deliberately NOT comparable to rawIngestsToday (24h) or a sync run's count. */
+  newCvesWindowDays?:       number;
   healthStatus:             HealthStatus;    // backward-compat: mirrors pipelineHealth
   pipelineHealth:           PipelineHealth;
   libraryMaturity:          LibraryMaturity;
@@ -224,6 +231,10 @@ export interface CaseLibraryMetrics {
     normalizedToday:   number;
     failedIngestions:  number;
     pendingReview:     number;
+    /** True when priority scoring has produced a queue nothing consumes — the
+     *  White Team seam, rather than an empty backlog. */
+    reviewQueueUnconsumed?: boolean;
+    reviewQueueSeamNote?:   string | null;
     avgProcessTimeSec: number;
     lastSyncAt:        string;
   };
@@ -332,6 +343,10 @@ export interface CaseLibraryPageBootstrapResponse {
   activity:       CaseLibraryActivityItem[];
   metrics:        CaseLibraryMetrics;
   providerStatus: SourceProviderStatus[];
+  /** Why provider contributions do not sum to the corpus total. Ships beside the
+   *  provider table so the two figures explain each other instead of looking
+   *  contradictory. */
+  corpusReconciliation?: CorpusReconciliation | null;
   facets:         ArchiveFacetsResponse;
 }
 
@@ -356,6 +371,12 @@ export interface DoctrineTagRow {
   continuityImplications:     string[];
   relatedCaseIds:             string[];
   relatedCaseCount:           number;
+  sourceBreakdown?:           SourceContribution[];
+  sourceConcentrated?:        boolean;
+  concentrationNote?:         string | null;
+  /** Newest case carrying this condition, so a row sampling stale cases cannot
+   *  look current beside a library adding ~1,000 records a week. */
+  newestCaseAt?:              string | null;
   replayGapSummary:           string;
   lastUpdated:                string;
 }
@@ -381,7 +402,14 @@ export interface ThreatMatrixRow {
   topDoctrineTags:      string[];
   topRecommendedActions:string[];
   topSources:           string[];
-  threatScore:          number;
+  /** Full decomposition of caseCount by contributing provider. An aggregate
+   *  without its composition is honest about the corpus and misleading as a
+   *  finding. */
+  sourceBreakdown?:     SourceContribution[];
+  /** True when one provider supplies >80% of this row — the figure then
+   *  describes that provider's reach rather than the world. */
+  sourceConcentrated?:  boolean;
+  concentrationNote?:   string | null;
   lastObservedAt:       string;
   summary:              string;
   topCases:             string[];
@@ -392,11 +420,23 @@ export interface ThreatMatrixRow {
   relatedSources:       string[];
 }
 
+export interface CorpusReconciliation {
+  providerContributions: number;
+  corpusTotal:           number;
+  deduplicated:          number;
+  explanation:           string;
+}
+
+export interface SourceContribution {
+  source:    string;
+  count:     number;
+  sharePct:  number;
+}
+
 export interface ThreatMatrixOverviewResponse {
   activeThreatFamilies: number;
   criticalExposure:     number;
   replayGaps:           number;
-  highestThreatScore:   number;
   rows:                 ThreatMatrixRow[];
 }
 
@@ -434,7 +474,7 @@ export interface DashboardOverviewResponse {
   criticalIntel: DashboardCriticalIntelligence;
 }
 
-export interface IncidentOverviewItem {
+export interface AdvisoryOverviewItem {
   id:                         string;
   title:                      string;
   source:                     string;
@@ -445,15 +485,15 @@ export interface IncidentOverviewItem {
   response_coverage_state:    string;
 }
 
-export interface IncidentsOverviewResponse {
-  total_incidents:                    number;
-  critical_incidents:                 number;
-  high_incidents:                     number;
-  medium_incidents:                   number;
-  low_incidents:                      number;
-  incidents_awaiting_replay:          number;
-  replay_validated_incidents:         number;
-  incidents_with_response_coverage:   number;
-  recent_incidents:                   IncidentOverviewItem[];
-  critical_ticker_items:              IncidentOverviewItem[];
+export interface AdvisoriesOverviewResponse {
+  total_advisories:                    number;
+  critical_advisories:                 number;
+  high_advisories:                     number;
+  medium_advisories:                   number;
+  low_advisories:                      number;
+  advisories_awaiting_validation:          number;
+  validation_passed_advisories:         number;
+  advisories_with_response_coverage:   number;
+  recent_advisories:                   AdvisoryOverviewItem[];
+  critical_ticker_items:              AdvisoryOverviewItem[];
 }

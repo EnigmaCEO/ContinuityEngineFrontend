@@ -238,7 +238,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     "/dashboard/radar-service",
     "/dashboard/red-team",
     "/dashboard/blue-team",
-    "/dashboard/black-ops",
+    "/dashboard/black-team",
     "/dashboard/settings",
   ].some((route) => pathname.startsWith(route));
 

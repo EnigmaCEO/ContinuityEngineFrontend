@@ -20,6 +20,46 @@ function validationVocabulary(text: string): string {
     .replaceAll("REPLAY", "VALIDATION");
 }
 
+
+/**
+ * Every aggregate ships its own composition.
+ *
+ * A family percentage without it is honest about the corpus and misleading as a
+ * finding: a reader cannot tell whether Bridge shows 5 because bridge failures
+ * are rare, or because one provider is the only crypto-native source. Replaces
+ * the old flat "Related Sources" list, which named the providers without saying
+ * how much each contributed.
+ */
+function SourceDecomposition({ row }: { row: ThreatMatrixRow }) {
+  const breakdown = row.sourceBreakdown ?? [];
+  if (breakdown.length === 0) {
+    return <DetailList title="Source Composition" items={row.relatedSources} empty="No source composition recorded." />;
+  }
+
+  return (
+    <DetailSection title="Source Composition">
+      {row.sourceConcentrated && row.concentrationNote && (
+        <div style={{ fontSize: 11, color: CLR.orange, lineHeight: 1.5, marginBottom: 8, paddingBottom: 8, borderBottom: `1px solid ${CLR.border}` }}>
+          {row.concentrationNote}
+        </div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {breakdown.map((entry) => (
+          <div key={entry.source}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: CLR.text, marginBottom: 3 }}>
+              <span>{entry.source}</span>
+              <span style={{ color: CLR.muted }}>{entry.count} · {entry.sharePct}%</span>
+            </div>
+            <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{ width: `${Math.min(100, entry.sharePct)}%`, height: "100%", background: row.sourceConcentrated ? CLR.orange : CLR.gold }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </DetailSection>
+  );
+}
+
 export default function ThreatMatrixPage() {
   const [data, setData] = useState<ThreatMatrixOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -109,7 +149,7 @@ export default function ThreatMatrixPage() {
           { label: "Active Threat Families", value: data?.activeThreatFamilies ?? 0, tone: CLR.gold },
           { label: "Critical Exposure", value: data?.criticalExposure ?? 0, tone: CLR.red },
           { label: "Validation Gaps", value: data?.replayGaps ?? 0, tone: CLR.orange },
-          { label: "Highest Threat Score", value: data?.highestThreatScore ?? 0, tone: CLR.text },
+          { label: "Doctrine Coverage", value: data?.rows?.length ? Math.round(data.rows.reduce((a, r) => a + r.doctrineCoveragePct, 0) / data.rows.length) : 0, tone: CLR.text },
         ].map((card) => (
           <div key={card.label} style={{ ...CARD_STYLE, padding: "16px 18px" }}>
             <div style={{ fontSize: 10, color: CLR.muted, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>{card.label}</div>
@@ -156,16 +196,16 @@ export default function ThreatMatrixPage() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "rgba(212,175,55,0.04)" }}>
-                  {["Threat Family", "Cases", "Critical", "Validation Coverage", "Doctrine Coverage", "Threat Score", "Top Doctrine Tags", "Top Actions"].map((label) => (
+                  {["Threat Family", "Cases", "Critical", "Validation Coverage", "Doctrine Coverage", "Top Doctrine Tags", "Top Actions"].map((label) => (
                     <th key={label} style={thStyle}>{label}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: CLR.muted }}><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /></td></tr>
+                  <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: CLR.muted }}><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /></td></tr>
                 ) : rows.length === 0 ? (
-                  <tr><td colSpan={8} style={{ padding: 24, textAlign: "center", color: CLR.muted, fontSize: 11.5 }}>No threat families match the current filters.</td></tr>
+                  <tr><td colSpan={7} style={{ padding: 24, textAlign: "center", color: CLR.muted, fontSize: 11.5 }}>No threat families match the current filters.</td></tr>
                 ) : rows.map((row) => (
                   <tr key={row.threatFamily} onClick={() => setSelected(row)} style={{ cursor: "pointer", borderTop: `1px solid rgba(212,175,55,0.08)`, background: selected?.threatFamily === row.threatFamily ? "rgba(212,175,55,0.06)" : "transparent" }}>
                     <td style={tdStyle}><div style={{ color: CLR.text, fontWeight: 600 }}>{row.threatFamily}</div></td>
@@ -173,7 +213,6 @@ export default function ThreatMatrixPage() {
                     <td style={{ ...tdStyle, color: row.criticalCount > 0 ? CLR.red : CLR.muted }}>{row.criticalCount}</td>
                     <td style={{ ...tdStyle, color: row.replayMissing > 0 ? CLR.orange : CLR.green }}>{row.replayCoveragePct}%</td>
                     <td style={tdStyle}>{row.doctrineCoveragePct}%</td>
-                    <td style={{ ...tdStyle, color: row.threatScore >= 30 ? CLR.red : row.threatScore >= 20 ? CLR.orange : CLR.gold }}>{row.threatScore}</td>
                     <td style={tdStyle}><ChipRow items={row.topDoctrineTags} empty="None" /></td>
                     <td style={tdStyle}><ChipRow items={row.topRecommendedActions} empty="None" /></td>
                   </tr>
@@ -203,6 +242,8 @@ export default function ThreatMatrixPage() {
             <DetailSection title="Summary" icon={<ShieldAlert size={13} style={{ color: CLR.gold }} />}>
               <div style={{ color: CLR.text, fontSize: 12, lineHeight: 1.55 }}>{validationVocabulary(selected.summary)}</div>
             </DetailSection>
+
+            <SourceDecomposition row={selected} />
             <DetailList title="Top Cases" items={selected.topCases} empty="No related cases." mono />
             <DetailList title="Doctrine Tags" items={selected.doctrineTags} empty="No doctrine tags recorded." mono />
             <DetailList title="Recommended Actions" items={selected.recommendedActions} empty="No recommended actions recorded." />
@@ -210,7 +251,6 @@ export default function ThreatMatrixPage() {
             <DetailSection title="Validation Gap Explanation">
               <div style={{ color: CLR.text, fontSize: 12, lineHeight: 1.55 }}>{validationVocabulary(selected.replayGapExplanation)}</div>
             </DetailSection>
-            <DetailList title="Related Sources" items={selected.relatedSources} empty="No related sources recorded." />
 
             <div style={{ color: CLR.muted, fontSize: 10.5, marginTop: 14 }}>Last Observed {formatTs(selected.lastObservedAt)}</div>
           </aside>

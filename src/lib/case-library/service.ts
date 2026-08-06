@@ -14,7 +14,7 @@ import type {
   EligibilityRefreshResult,
   DoctrineOverviewResponse,
   DashboardOverviewResponse,
-  IncidentsOverviewResponse,
+  AdvisoriesOverviewResponse,
   ThreatMatrixOverviewResponse,
 } from './types';
 import { MOCK_CASES, MOCK_SUMMARY_STATS, MOCK_ACTIVITY, MOCK_METRICS } from './mock';
@@ -38,8 +38,8 @@ const dashboardOverviewRequests = new Map<
   '24h' | '7d' | '30d',
   Promise<DashboardOverviewResponse>
 >();
-let incidentsOverviewCache: { expiresAt: number; data: IncidentsOverviewResponse } | null = null;
-let incidentsOverviewRequest: Promise<IncidentsOverviewResponse> | null = null;
+let advisoriesOverviewCache: { expiresAt: number; data: AdvisoriesOverviewResponse } | null = null;
+let advisoriesOverviewRequest: Promise<AdvisoriesOverviewResponse> | null = null;
 let pageBootstrapCache: { expiresAt: number; data: CaseLibraryPageBootstrapResponse } | null = null;
 let pageBootstrapRequest: Promise<CaseLibraryPageBootstrapResponse> | null = null;
 
@@ -386,7 +386,6 @@ export async function fetchThreatMatrixOverview(): Promise<ThreatMatrixOverviewR
       activeThreatFamilies: 0,
       criticalExposure: 0,
       replayGaps: 0,
-      highestThreatScore: 0,
       rows: [],
     };
   }
@@ -425,31 +424,31 @@ export async function fetchDashboardOverview(
   return waitForSharedRequest(request, signal);
 }
 
-export async function fetchIncidentsOverview(signal?: AbortSignal): Promise<IncidentsOverviewResponse> {
+export async function fetchAdvisoriesOverview(signal?: AbortSignal): Promise<AdvisoriesOverviewResponse> {
   if (signal?.aborted) {
     throw new DOMException('The operation was aborted.', 'AbortError');
   }
 
   const now = Date.now();
-  if (incidentsOverviewCache && incidentsOverviewCache.expiresAt > now) {
-    return incidentsOverviewCache.data;
+  if (advisoriesOverviewCache && advisoriesOverviewCache.expiresAt > now) {
+    return advisoriesOverviewCache.data;
   }
 
-  if (!incidentsOverviewRequest) {
-    incidentsOverviewRequest = fetchJsonWithDashboardLog<IncidentsOverviewResponse>(
-      `${API_BASE}/incidents/overview`,
+  if (!advisoriesOverviewRequest) {
+    advisoriesOverviewRequest = fetchJsonWithDashboardLog<AdvisoriesOverviewResponse>(
+      `${API_BASE}/advisories/overview`,
     )
       .then((data) => {
-        incidentsOverviewCache = {
+        advisoriesOverviewCache = {
           expiresAt: Date.now() + INCIDENTS_OVERVIEW_TTL_MS,
           data,
         };
         return data;
       })
       .finally(() => {
-        incidentsOverviewRequest = null;
+        advisoriesOverviewRequest = null;
       });
   }
 
-  return waitForSharedRequest(incidentsOverviewRequest, signal);
+  return waitForSharedRequest(advisoriesOverviewRequest, signal);
 }
