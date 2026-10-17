@@ -42,9 +42,12 @@ let advisoriesOverviewCache: { expiresAt: number; data: AdvisoriesOverviewRespon
 let advisoriesOverviewRequest: Promise<AdvisoriesOverviewResponse> | null = null;
 let pageBootstrapCache: { expiresAt: number; data: CaseLibraryPageBootstrapResponse } | null = null;
 let pageBootstrapRequest: Promise<CaseLibraryPageBootstrapResponse> | null = null;
+let pageBootstrapGeneration = 0;
 
 function invalidatePageBootstrap(): void {
+  pageBootstrapGeneration += 1;
   pageBootstrapCache = null;
+  pageBootstrapRequest = null;
 }
 
 function apiUrl(path: string): URL {
@@ -245,18 +248,22 @@ export async function fetchPageBootstrap(): Promise<CaseLibraryPageBootstrapResp
     return pageBootstrapCache.data;
   }
   if (!pageBootstrapRequest) {
-    pageBootstrapRequest = fetch(`${API_BASE}/case-library/page-bootstrap`, { cache: 'no-store' })
+    const generation = pageBootstrapGeneration;
+    const request = fetch(`${API_BASE}/case-library/page-bootstrap`, { cache: 'no-store' })
       .then(async (response) => {
         if (!response.ok) throw new Error(await errorMessage(response, 'Case Library panels failed'));
         return response.json() as Promise<CaseLibraryPageBootstrapResponse>;
       })
       .then((data) => {
-        pageBootstrapCache = { expiresAt: Date.now() + PAGE_BOOTSTRAP_TTL_MS, data };
+        if (generation === pageBootstrapGeneration) {
+          pageBootstrapCache = { expiresAt: Date.now() + PAGE_BOOTSTRAP_TTL_MS, data };
+        }
         return data;
       })
       .finally(() => {
-        pageBootstrapRequest = null;
+        if (pageBootstrapRequest === request) pageBootstrapRequest = null;
       });
+    pageBootstrapRequest = request;
   }
   return pageBootstrapRequest;
 }

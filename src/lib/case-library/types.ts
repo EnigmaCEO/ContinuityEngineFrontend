@@ -278,6 +278,8 @@ export interface SourceSyncResult {
   rawAdded:          number;
   normalized:        number;
   classified:        number;
+  enriched:          number;
+  replayed:          number;
   duplicatesSkipped: number;
   sourcesMerged:     number;
   failed:            number;

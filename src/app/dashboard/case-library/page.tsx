@@ -13,6 +13,7 @@ import type {
   SourceProviderStatus,
   BatchReplayResult,
   EligibilityRefreshResult,
+  SourceSyncResult,
 } from "@/lib/case-library/types";
 import type { CaseLibraryTableSortKey } from "@/lib/case-library/types";
 import {
@@ -28,7 +29,7 @@ import { CaseLibraryMetricsPanel, IntelligenceProvidersSection } from "@/compone
 import { CaseLibraryActivityFeed } from "@/components/case-library/CaseLibraryActivityFeed";
 import { CasePreviewDrawer }       from "@/components/case-library/CasePreviewDrawer";
 import { useSession } from "@/components/layout/SessionContext";
-import { AlertTriangle, RefreshCw, Archive, LayoutDashboard, ChevronLeft, Play, Loader2, Zap, Layers } from "lucide-react";
+import { AlertTriangle, CheckCircle2, X, RefreshCw, Archive, LayoutDashboard, ChevronLeft, Play, Loader2, Zap, Layers } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -150,6 +151,31 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
   );
 }
 
+function SyncSuccessBanner({ result, onDismiss }: { result: SourceSyncResult; onDismiss: () => void }) {
+  return (
+    <div role="status" aria-live="polite" style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "10px 14px", borderRadius: 7,
+      background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.3)",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <CheckCircle2 size={14} style={{ color: CLR.green, flexShrink: 0 }} />
+        <span style={{ fontSize: 11.5, color: "#86EFAC" }}>
+          Sync completed: {result.sourcesRun} sources, {result.rawAdded} new, {result.normalized} normalized,
+          {` ${result.classified} classified, ${result.enriched} enriched`}
+          {result.failed > 0 ? `, ${result.failed} failed` : ""}.
+        </span>
+      </div>
+      <button onClick={onDismiss} aria-label="Dismiss sync result" style={{
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "transparent", border: 0, padding: 4, cursor: "pointer", color: CLR.green,
+      }}>
+        <X size={13} />
+      </button>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CaseLibraryPage() {
@@ -182,6 +208,7 @@ export default function CaseLibraryPage() {
   const [facetsLoading,   setFacetsLoading]   = useState(true);
   const [error,           setError]           = useState<string | null>(null);
   const [syncing,         setSyncing]         = useState(false);
+  const [syncResult,      setSyncResult]      = useState<SourceSyncResult | null>(null);
 
   // ── Batch validation state ──────────────────────────────────────────────────────
   const [batchReplaying,    setBatchReplaying]    = useState(false);
@@ -278,8 +305,14 @@ export default function CaseLibraryPage() {
 
   async function handleSync() {
     setSyncing(true);
+    setSyncResult(null);
+    setError(null);
     try {
-      await triggerSync();
+      const result = await triggerSync();
+      if (result) {
+        setSyncResult(result);
+        setSummary((current) => current ? { ...current, lastSyncAt: result.lastSyncAt } : current);
+      }
       await loadMeta();
       await loadCases();
     } catch (e) {
@@ -444,6 +477,9 @@ export default function CaseLibraryPage() {
 
       {error && (
         <ErrorBanner message={error} onRetry={() => { loadMeta(); loadCases(); }} />
+      )}
+      {syncResult && !error && (
+        <SyncSuccessBanner result={syncResult} onDismiss={() => setSyncResult(null)} />
       )}
 
       {/* ── View mode tabs ─────────────────────────────────────────────────── */}
