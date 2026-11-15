@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { fetchAdvisoriesOverview } from "@/lib/case-library/service";
-import type { AdvisoryOverviewItem } from "@/lib/case-library/types";
 
+type TickerItem = { title: string; source: string };
+
+// Shown only when the server has never had a successful ticker read. With a
+// snapshot in the cache, the first paint is the last successful ticker and this
+// copy never appears. It is worded as a pending state, not an outage.
 const FALLBACK: string[] = [
-  "Critical incident feed temporarily unavailable",
-  "Live case feed reconnecting",
-  "Case Library sync pending",
+  "Loading recent critical incidents from the Case Library",
   "Review recent incidents in the Case Library",
 ];
 
@@ -17,12 +19,16 @@ function truncate(s: string, max: number): string {
   return s.length > max ? s.slice(0, max).trimEnd() + "…" : s;
 }
 
-function formatTickerItem(item: AdvisoryOverviewItem): string {
+function formatTickerItem(item: TickerItem): string {
   return `${truncate(item.title, TITLE_MAX)} — via ${item.source}`;
 }
 
-export default function TickerClient() {
-  const [items, setItems] = useState<string[]>(FALLBACK);
+export default function TickerClient({ initialItems }: { initialItems?: TickerItem[] }) {
+  // Start from the server snapshot so the ticker is populated on first paint,
+  // then refresh from the live API. A failed refresh keeps what is on screen.
+  const [items, setItems] = useState<string[]>(() =>
+    initialItems && initialItems.length > 0 ? initialItems.map(formatTickerItem) : FALLBACK,
+  );
 
   useEffect(() => {
     const controller = new AbortController();

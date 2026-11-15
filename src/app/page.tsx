@@ -4,6 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import NavBar from "./NavBar";
 import TickerClient from "./TickerClient";
+import { getTickerSnapshot } from "@/lib/case-library/ticker-snapshot";
+
+// Regenerate in the background at most every five minutes. A regeneration whose
+// ticker read fails still renders the last successful snapshot from the cache.
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Sagitta Continuity Engine — Web3 Protocol Continuity Intelligence",
@@ -97,7 +102,9 @@ const TRUST_POINTS = [
   "\"Defended\" applies only after controls are explicitly verified against provided evidence.",
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const tickerSnapshot = await getTickerSnapshot();
+
   return (
     <div style={{ background: BG, color: TEXT, minHeight: "100vh", fontFamily: "var(--font-geist-sans), Arial, sans-serif" }}>
 
@@ -249,7 +256,7 @@ export default function HomePage() {
         </div>
 
         {/* Recent incidents ticker pinned to bottom of hero, always above fold */}
-        <TickerClient />
+        <TickerClient initialItems={tickerSnapshot?.items} />
 
       </section>
 
