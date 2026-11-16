@@ -13,7 +13,7 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: "Sagitta Continuity Engine — Web3 Protocol Continuity Intelligence",
   description:
-    "SCE is the public-surface authority intelligence layer for protocol continuity, linking incidents, threat families, authority paths, and evidence gaps.",
+    "SCE is the public-surface authority intelligence layer for protocol continuity, linking incidents, threat families, authority paths, and evidence gaps. An operator-only preview: portal access is by approved request.",
 };
 
 const GOLD = "#D4AF37";
@@ -184,6 +184,25 @@ export default async function HomePage() {
               Sagitta Continuity Engine
             </div>
 
+            {/* Access status: SCE is an operator-only preview, not a self-serve product. */}
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "6px 12px",
+              borderRadius: 999,
+              border: `1px solid ${PURPLE_FAINT}`,
+              background: "rgba(139,92,246,0.08)",
+              color: PURPLE,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase" as const,
+              marginBottom: 20,
+            }}>
+              Operator-only preview
+            </div>
+
             {/* Headline */}
             <h1 className="hero-h1" style={{
               margin: "0 0 32px",
@@ -202,7 +221,7 @@ export default async function HomePage() {
 
             {/* Subtext */}
             <p className="hero-subtext" style={{
-              margin: "0 0 40px",
+              margin: "0 0 16px",
               maxWidth: 440,
               fontSize: "clamp(13px, 1.4vw, 15px)",
               color: TEXT_MUTED,
@@ -211,6 +230,16 @@ export default async function HomePage() {
               Public-surface authority intelligence for protocol continuity. SCE maps public authority paths,
               incident patterns, threat families, and evidence gaps so protocols can understand what may break
               before it becomes an emergency.
+            </p>
+            <p style={{
+              margin: "0 0 40px",
+              maxWidth: 440,
+              fontSize: 13,
+              color: TEXT_FAINT,
+              lineHeight: 1.7,
+            }}>
+              SCE is an operator-only preview. The portal is open to approved operators; access is by request.
+              Protocols that want a review today can commission one through Sagitta Defense.
             </p>
 
             {/* CTAs */}
@@ -228,7 +257,7 @@ export default async function HomePage() {
                 gap: 8,
                 whiteSpace: "nowrap" as const,
               }}>Explore SCE &nbsp;→</a>
-              <Link href="/login" className="hero-cta-btn" style={{
+              <Link href="/request-access" className="hero-cta-btn" style={{
                 padding: "14px 24px",
                 borderRadius: 8,
                 border: `1px solid rgba(255,255,255,0.16)`,
@@ -241,7 +270,7 @@ export default async function HomePage() {
                 alignItems: "center",
                 gap: 8,
                 whiteSpace: "nowrap" as const,
-              }}>View dashboard &nbsp;→</Link>
+              }}>Request operator access &nbsp;→</Link>
             </div>
 
             {/* Trust line */}
@@ -2356,7 +2385,7 @@ export default async function HomePage() {
               alignItems: "center",
               gap: 8,
             }}>
-              Enter Portal &nbsp;→
+              Operator sign-in &nbsp;→
             </Link>
           </div>
         </div>
