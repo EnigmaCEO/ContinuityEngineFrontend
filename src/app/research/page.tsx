@@ -149,9 +149,27 @@ export default function ResearchPage() {
           </div>
         </section>
 
-        <p style={{ maxWidth: 1120, margin: "0 auto 72px", fontSize: 14, lineHeight: 1.72, color: TEXT_MUTED }}>
-          Research notes are published here once they clear factual, disclosure, and brand review.
-        </p>
+        <section style={{
+          maxWidth: 1120,
+          margin: "0 auto 72px",
+          padding: "28px",
+          borderRadius: 8,
+          border: `1px solid ${PURPLE_FAINT}`,
+          background: "linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(10,12,18,0.92) 62%)",
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", color: GOLD, textTransform: "uppercase", marginBottom: 12 }}>
+            Research Note 001 · Authority Report · Q4 2026
+          </div>
+          <h2 style={{ margin: "0 0 12px", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 850, color: TEXT }}>
+            The Authority Gap
+          </h2>
+          <p style={{ margin: "0 0 18px", fontSize: 14, lineHeight: 1.72, color: TEXT_MUTED, maxWidth: 760 }}>
+            Across 4,139 public crypto incidents, 94.8% of classified losses entered through privileged access, signing, or admin authority rather than code bugs. In 80.6% of incidents, the authority that could contain the loss was the one causing it.
+          </p>
+          <Link href="/research/note-001" style={primaryButtonStyle}>
+            Read Research Note 001
+          </Link>
+        </section>
 
         <section style={{
           maxWidth: 1120,

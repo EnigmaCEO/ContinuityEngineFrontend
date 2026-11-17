@@ -1725,13 +1725,13 @@ export default async function HomePage() {
               Public research notes
             </div>
             <p style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 700, lineHeight: 1.4, color: TEXT }}>
-              Explore how Sagitta Defense applies public-surface authority intelligence to real protocols.
+              Research Note 001: The Authority Gap. Across 4,139 public crypto incidents, 94.8% of classified losses entered through privileged authority, not code bugs.
             </p>
             <p style={{ margin: 0, fontSize: 13, color: TEXT_FAINT, lineHeight: 1.6 }}>
-              Methodology, scope, and public-data boundaries are available now.
+              The first SCE authority report, built from the Case Library. Methodology, scope, and public-data boundaries included.
             </p>
           </div>
-          <Link href="/research" style={{
+          <Link href="/research/note-001" style={{
             padding: "12px 20px",
             borderRadius: 8,
             border: `1px solid ${PURPLE_FAINT}`,
@@ -1742,7 +1742,7 @@ export default async function HomePage() {
             fontSize: 14,
             whiteSpace: "nowrap" as const,
           }}>
-            View research methodology
+            Read Research Note 001
           </Link>
         </div>
       </section>
