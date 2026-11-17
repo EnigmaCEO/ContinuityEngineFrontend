@@ -49,13 +49,6 @@ const NOT_ITEMS = [
   "Not certification that a protocol is safe or defended",
 ];
 
-const STATUS_CHIPS = [
-  "Protocol selection",
-  "Public-data only",
-  "Disclosure posture required",
-  "No findings public yet",
-];
-
 export default function ResearchPage() {
   return (
     <div style={{ background: BG, color: TEXT, minHeight: "100vh", fontFamily: "var(--font-geist-sans), Arial, sans-serif" }}>
@@ -156,44 +149,9 @@ export default function ResearchPage() {
           </div>
         </section>
 
-        <section style={{
-          maxWidth: 1120,
-          margin: "0 auto 72px",
-          padding: "28px",
-          borderRadius: 8,
-          border: `1px solid ${PURPLE_FAINT}`,
-          background: "linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(10,12,18,0.92) 62%)",
-        }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: 28, alignItems: "start" }}>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", color: GOLD, textTransform: "uppercase", marginBottom: 12 }}>
-                Research Note 001
-              </div>
-              <h2 style={{ margin: "0 0 14px", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 850, color: TEXT }}>
-                Research Note 001 — In Preparation
-              </h2>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.72, color: TEXT_MUTED }}>
-                The first note is in protocol selection. Protocol not selected. No findings will be published until public data review, factual checks, disclosure posture, and brand/legal review are complete.
-              </p>
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-              {STATUS_CHIPS.map((chip) => (
-                <span key={chip} style={{
-                  padding: "8px 12px",
-                  borderRadius: 6,
-                  border: `1px solid ${GOLD_FAINT}`,
-                  background: "rgba(212,175,55,0.07)",
-                  color: GOLD_DIM,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  lineHeight: 1.35,
-                }}>
-                  {chip}
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
+        <p style={{ maxWidth: 1120, margin: "0 auto 72px", fontSize: 14, lineHeight: 1.72, color: TEXT_MUTED }}>
+          Research notes are published here once they clear factual, disclosure, and brand review.
+        </p>
 
         <section style={{
           maxWidth: 1120,
@@ -266,7 +224,6 @@ export default function ResearchPage() {
         <Link href="/" style={{ fontSize: 12, color: TEXT_FAINT, textDecoration: "none" }}>
           Back to home
         </Link>
-        <span style={{ fontSize: 11, color: TEXT_FAINT }}>Research Note 001 is not published.</span>
       </footer>
     </div>
   );

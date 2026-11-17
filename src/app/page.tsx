@@ -1725,7 +1725,7 @@ export default async function HomePage() {
               Public research notes
             </div>
             <p style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 700, lineHeight: 1.4, color: TEXT }}>
-              Explore how Sagitta Defense applies public-surface authority intelligence to real protocols. Research Note 001 is in preparation.
+              Explore how Sagitta Defense applies public-surface authority intelligence to real protocols.
             </p>
             <p style={{ margin: 0, fontSize: 13, color: TEXT_FAINT, lineHeight: 1.6 }}>
               Methodology, scope, and public-data boundaries are available now.
